@@ -6,71 +6,42 @@ include_in_header: false
 
 **Privacy Policy**
 
-This privacy policy applies to the Eagle Viewer app (hereby referred to as "Application") for mobile devices that was created by its developer (hereby referred to as "Service Provider") as an Open Source service. This service is intended for use "AS IS".
+**Effective Date:** August 31, 2025
 
-**Information Collection and Use**
+This privacy policy governs your use of the software application **Eagle Viewer** ("the Application") for mobile devices.
 
-The Application collects information when you download and use it. This information may include information such as
+**Our Commitment to Your Privacy**
 
-*   Your device's Internet Protocol address (e.g. IP address)
-*   The pages of the Application that you visit, the time and date of your visit, the time spent on those pages
-*   The time spent on the Application
-*   The operating system you use on your mobile device
+We are committed to protecting your privacy. We understand the importance of your personal data and want you to feel secure when using our Application. This Application was designed with privacy as a top priority.
 
-The Application does not gather precise information about the location of your mobile device.
+**1. Data Collection**
 
-The Application collects your device's location, which helps the Service Provider determine your approximate geographical location and make use of in below ways:
+We do not collect, store, transmit, or have access to any personal information or personally identifiable data from our users. All data, files, and libraries that you open or manage with the Application are processed locally on your device. The data remains under your control and is never sent to us or any third party.
 
-*   Geolocation Services: The Service Provider utilizes location data to provide features such as personalized content, relevant recommendations, and location-based services.
-*   Analytics and Improvements: Aggregated and anonymized location data helps the Service Provider to analyze user behavior, identify trends, and improve the overall performance and functionality of the Application.
-*   Third-Party Services: Periodically, the Service Provider may transmit anonymized location data to external services. These services assist them in enhancing the Application and optimizing their offerings.
+**2. Permissions**
 
-The Service Provider may use the information you provided to contact you from time to time to provide you with important information, required notices and marketing promotions.
+The Application may request permission to access your files and folders (via the Files app or iCloud Drive). This permission is required solely for the app's core functionality, which is to allow you to open and view your libraries. We do not use this permission to access your data for any other purpose, and we do not collect or store any of your files.
 
-For a better experience, while using the Application, the Service Provider may require you to provide us with certain personally identifiable information. The information that the Service Provider request will be retained by them and used as described in this privacy policy.
+**3. Analytics and Crash Reports**
 
-**Third Party Access**
+We do not add any third-party analytics or crash reporting tools to the Application. Our goal is to collect no data.
 
-Only aggregated, anonymized data is periodically transmitted to external services to aid the Service Provider in improving the Application and their service. The Service Provider may share your information with third parties in the ways that are described in this privacy statement.
+However, if you have chosen to share diagnostics and usage information with app developers through your device's settings, Apple may collect and provide us with anonymized usage statistics and crash reports. This data is aggregated, does not personally identify you, and helps us improve the Application's stability and performance. We do not attempt to link this anonymous data to any individual user.
 
-The Service Provider may disclose User Provided and Automatically Collected Information:
+**4. Third-Party Services**
 
-*   as required by law, such as to comply with a subpoena, or similar legal process;
-*   when they believe in good faith that disclosure is necessary to protect their rights, protect your safety or the safety of others, investigate fraud, or respond to a government request;
-*   with their trusted services providers who work on their behalf, do not have an independent use of the information we disclose to them, and have agreed to adhere to the rules set forth in this privacy statement.
+The Application does not use any third-party services or advertising networks that could collect information about you.
 
-**Opt-Out Rights**
+**5. Children's Privacy**
 
-You can stop all collection of information by the Application easily by uninstalling it. You may use the standard uninstall processes as may be available as part of your mobile device or via the mobile application marketplace or network.
+We do not knowingly collect any personal information from children under the age of 13. Since our Application does not collect any personal information whatsoever, it is inherently safe for use by people of all ages.
 
-**Data Retention Policy**
+**6. Changes to This Privacy Policy**
 
-The Service Provider will retain User Provided data for as long as you use the Application and for a reasonable time thereafter. If you'd like them to delete User Provided Data that you have provided via the Application, please contact them at naamiru@gmail.com and they will respond in a reasonable time.
+We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page. You are advised to review this Privacy Policy periodically for any changes. Changes to this Privacy Policy are effective when they are posted on this page.
 
-**Children**
+**7. Contact Us**
 
-The Service Provider does not use the Application to knowingly solicit data from or market to children under the age of 13.
+If you have any questions or suggestions about our Privacy Policy, do not hesitate to contact us.
 
-The Service Provider does not knowingly collect personally identifiable information from children. The Service Provider encourages all children to never submit any personally identifiable information through the Application and/or Services. The Service Provider encourage parents and legal guardians to monitor their children's Internet usage and to help enforce this Policy by instructing their children never to provide personally identifiable information through the Application and/or Services without their permission. If you have reason to believe that a child has provided personally identifiable information to the Service Provider through the Application and/or Services, please contact the Service Provider (naamiru@gmail.com) so that they will be able to take the necessary actions. You must also be at least 16 years of age to consent to the processing of your personally identifiable information in your country (in some countries we may allow your parent or guardian to do so on your behalf).
-
-**Security**
-
-The Service Provider is concerned about safeguarding the confidentiality of your information. The Service Provider provides physical, electronic, and procedural safeguards to protect information the Service Provider processes and maintains.
-
-**Changes**
-
-This Privacy Policy may be updated from time to time for any reason. The Service Provider will notify you of any changes to the Privacy Policy by updating this page with the new Privacy Policy. You are advised to consult this Privacy Policy regularly for any changes, as continued use is deemed approval of all changes.
-
-This privacy policy is effective as of 2025-08-31
-
-**Your Consent**
-
-By using the Application, you are consenting to the processing of your information as set forth in this Privacy Policy now and as amended by us.
-
-**Contact Us**
-
-If you have any questions regarding privacy while using the Application, or have questions about the practices, please contact the Service Provider via email at naamiru@gmail.com.
-
-* * *
-
-This privacy policy page was generated by [App Privacy Policy Generator](https://app-privacy-policy-generator.nisrulz.com/)
+naamiruuu@gmail.com
