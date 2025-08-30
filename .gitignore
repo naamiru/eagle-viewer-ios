@@ -8,6 +8,9 @@
 *.perspectivev3
 *.xcuserstate
 project.xcworkspace/
+!project.xcworkspace/xcshareddata/
+!project.xcworkspace/xcshareddata/swiftpm/
+!project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 xcuserdata/
 
 # Generated files
