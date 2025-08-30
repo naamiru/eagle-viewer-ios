@@ -1,0 +1,95 @@
+//
+//  Migration.swift
+//  EagleViewer
+//
+//  Created on 2025/08/28
+//
+
+import GRDB
+
+struct Migration {
+    static func getMigrator() -> DatabaseMigrator {
+        var migrator = DatabaseMigrator()
+        
+#if DEBUG
+        // Speed up development by nuking the database when migrations change
+        migrator.eraseDatabaseOnSchemaChange = true
+#endif
+        
+        migrator.registerMigration("initial") { db in
+            try db.create(table: "library") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("name", .text).notNull()
+                t.column("bookmarkData", .blob).notNull()
+                t.column("sortOrder", .integer).notNull().defaults(to: 0)
+                t.column("lastImportedFolderMTime", .integer).notNull().defaults(to: 0)
+                t.column("lastImportedItemMTime", .integer).notNull().defaults(to: 0)
+                t.column("lastImportStatus", .text).notNull().defaults(to: ImportStatus.none.rawValue)
+                t.column("useLocalStorage", .boolean).notNull()
+            }
+            
+            try db.create(table: "folder") { t in
+                t.primaryKey {
+                    t.belongsTo("library", onDelete: .cascade)
+                    t.column("folderId", .text)
+                }
+                t.column("parentId", .text)
+                t.column("name", .text).notNull()
+                t.column("nameForSort", .text).notNull()
+                t.column("modificationTime", .integer).notNull()
+                t.column("manualOrder", .integer).notNull()
+                t.column("sortType", .text).notNull().defaults(to: FolderItemSortOption.defaultValue.type.rawValue)
+                t.column("sortAscending", .boolean).notNull().defaults(to: FolderItemSortOption.defaultValue.ascending)
+            }
+            
+            try db.create(index: "idx_folder_parent", on: "folder", columns: ["libraryId", "parentId"])
+            
+            // index for sort
+            try db.create(index: "idx_folder_nameForSort", on: "folder", columns: ["libraryId", "nameForSort"])
+            try db.create(index: "idx_folder_modificationTime", on: "folder", columns: ["libraryId", "modificationTime"])
+            try db.create(index: "idx_folder_manualOrder", on: "folder", columns: ["libraryId", "manualOrder"])
+            
+            try db.create(table: "item") { t in
+                t.primaryKey {
+                    t.belongsTo("library", onDelete: .cascade)
+                    t.column("itemId", .text)
+                }
+                t.column("name", .text).notNull()
+                t.column("nameForSort", .text).notNull()
+                t.column("size", .integer).notNull()
+                t.column("btime", .integer).notNull()
+                t.column("mtime", .integer).notNull()
+                t.column("ext", .text).notNull()
+                t.column("isDeleted", .boolean).notNull()
+                t.column("modificationTime", .integer).notNull()
+                t.column("height", .integer).notNull()
+                t.column("width", .integer).notNull()
+                t.column("lastModified", .integer).notNull()
+                t.column("noThumbnail", .boolean).notNull()
+                t.column("star", .integer).notNull()
+                t.column("duration", .double).notNull()
+            }
+            
+            // index for sort
+            try db.create(index: "idx_item_nameForSort", on: "item", columns: ["libraryId", "isDeleted", "nameForSort"])
+            try db.create(index: "idx_item_modificationTime", on: "item", columns: ["libraryId", "isDeleted", "modificationTime"])
+            try db.create(index: "idx_item_star", on: "item", columns: ["libraryId", "isDeleted", "star"])
+            
+            try db.create(table: "folderItem") { t in
+                t.primaryKey {
+                    t.belongsTo("library", onDelete: .cascade)
+                    t.column("folderId", .text)
+                    t.column("itemId", .text)
+                }
+                t.column("orderValue", .text).notNull()
+            }
+            
+            try db.create(index: "idx_folderItem_item", on: "folderItem", columns: ["libraryId", "itemId"])
+            
+            // Index for efficient manual sort in folder
+            try db.create(index: "idx_folderItem_order", on: "folderItem", columns: ["libraryId", "folderId", "orderValue"])
+        }
+        
+        return migrator
+    }
+}
