@@ -351,12 +351,22 @@
         }
       }
     },
+    "On My iPad" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このiPad内"
+          }
+        }
+      }
+    },
     "On My iPhone" : {
       "localizations" : {
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iPhone内"
+            "value" : "このiPhone内"
           }
         }
       }

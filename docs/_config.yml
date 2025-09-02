@@ -13,14 +13,14 @@ presskit_download_link                    :                                     
 app_icon                                  : assets/appicon.png                        # Automatically populates if not set and if iOS app ID is set.  Otherwise enter path to icon file manually.
 app_name                                  : Eagle Viewer                              # Automatically populates if not set and if iOS app ID is set.  Otherwise enter manually.
 app_price                                 : free                                      # Automatically populates if not set and if iOS app ID is set.  Otherwise enter manually.
-app_description                           : Browse Eagle library anywhere.
+app_description                           : Browse Eagle library on iPhone & iPad.
 
 enable_smart_app_banner                   : true                                      # Set to true to show a smart app banner at top of page on mobile devices.
 
 
 
 # Information About Yourself
-your_name                                 : naamiru
+your_name                                 :
 your_link                                 :          
 your_city                                 : 
 email_address                             : naamiruuu@gmail.com
@@ -39,7 +39,7 @@ mastodon_link                             :
 features                                  :
 
   - title                                 : Access Anywhere
-    description                           : Open your libraries directly from your iPhone's local storage, iCloud Drive, or network shares like a NAS.
+    description                           : Open your libraries directly from your device's local storage, iCloud Drive, or network shares like a NAS.
     fontawesome_icon_name                 : network-wired
     
   - title                                 : Effortless Sync
@@ -47,7 +47,7 @@ features                                  :
     fontawesome_icon_name                 : sync-alt
 
   - title                                 : Offline Access
-    description                           : Cache images to your iPhone and browse your collection comfortably, even without an internet connection.
+    description                           : Cache images to your device and browse your collection comfortably, even without an internet connection.
     fontawesome_icon_name                 : plane-departure
 
 
