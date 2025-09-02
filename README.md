@@ -1,6 +1,6 @@
 # Eagle Viewer for iOS
 
-An iOS app for viewing [Eagle](https://jp.eagle.cool/) image libraries on iPhone.
+An iOS app for viewing [Eagle](https://jp.eagle.cool/) image libraries on iPhone and iPad.
 
 [<img src="docs/assets/appstore.png" alt="App Store" height="75">](https://apps.apple.com/us/app/eagle-viewer/id6751750244?uo=4)
 

@@ -70,7 +70,9 @@ struct LibraryFolderSelectView: View {
                             .foregroundStyle(.secondary)
                         
                         VStack(alignment: .leading, spacing: 14) {
-                            LocationItem(icon: "iphone", title: String(localized: "On My iPhone"), description: String(localized: "Local storage on this device"))
+                            LocationItem(icon: UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone",
+                                         title: UIDevice.current.userInterfaceIdiom == .pad ? String(localized: "On My iPad") : String(localized: "On My iPhone"),
+                                         description: String(localized: "Local storage on this device"))
                             LocationItem(icon: "icloud", title: String(localized: "iCloud Drive"), description: String(localized: "Synced across your Apple devices"))
                             LocationItem(icon: "externaldrive", title: String(localized: "External Storage"), description: String(localized: "Connected drives or network shares"))
                         }
