@@ -32,7 +32,7 @@ class SettingsManager: ObservableObject {
             .flatMap { FolderSortType(rawValue: $0) } ?? FolderSortOption.defaultValue.type
         let folderAscending = UserDefaults.standard.object(forKey: "folderSortAscending") as? Bool ?? FolderSortOption.defaultValue.ascending
         self.folderSortOption = FolderSortOption(type: folderSortType, ascending: folderAscending)
-        
+
         self.layout = UserDefaults.standard.string(forKey: "layout")
             .flatMap { Layout(rawValue: $0) } ?? Layout.defaultValue
     }
@@ -57,9 +57,27 @@ class SettingsManager: ObservableObject {
         UserDefaults.standard.set(option.type.rawValue, forKey: "folderSortType")
         UserDefaults.standard.set(option.ascending, forKey: "folderSortAscending")
     }
-    
+
     func setLayout(_ layout: Layout) {
         self.layout = layout
         UserDefaults.standard.set(layout.rawValue, forKey: "layout")
+    }
+
+    func getNavigationPath() -> [NavigationDestination] {
+        guard let data = UserDefaults.standard.data(forKey: "navigationPath") else {
+            return []
+        }
+        do {
+            return try JSONDecoder().decode([NavigationDestination].self, from: data)
+        } catch {
+            return []
+        }
+    }
+
+    func setNavigationPath(_ path: [NavigationDestination]) {
+        do {
+            let data = try JSONEncoder().encode(path)
+            UserDefaults.standard.set(data, forKey: "navigationPath")
+        } catch {}
     }
 }
