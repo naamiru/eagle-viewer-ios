@@ -216,6 +216,7 @@ struct ItemImageViewer: View {
 
     @State private var scale: CGFloat = 1
     @State private var lastScale: CGFloat = 1
+    @State private var wasNoUIBeforeZoom: Bool = false
 
     @Environment(\.dismiss) private var dismiss
 
@@ -247,6 +248,20 @@ struct ItemImageViewer: View {
             height: size.height
         )
         .ignoresSafeArea()
+        .onChange(of: scale) { oldValue, newValue in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                if oldValue == 1 && newValue > 1 {
+                    // Starting to zoom in from normal scale
+                    wasNoUIBeforeZoom = isNoUI
+                    isNoUI = true
+                } else if newValue == 1 && oldValue > 1 {
+                    // Zoom reset to normal scale
+                    if !wasNoUIBeforeZoom {
+                        isNoUI = false
+                    }
+                }
+            }
+        }
     }
 
     private func getImageFrame() -> CGSize {
@@ -281,6 +296,12 @@ struct ItemImageViewer: View {
                 if scale < 1 {
                     withAnimation {
                         scale = 1
+                    }
+                    // Handle zoom reset via pinch
+                    if !wasNoUIBeforeZoom {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isNoUI = false
+                        }
                     }
                 }
             }
