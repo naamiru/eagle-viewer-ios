@@ -15,6 +15,10 @@ struct ImageDetailView: View {
 
     @State private var isNoUI = false
     @State private var swipeDisabled = false
+    @State private var mainScrollId: String?
+    @State private var thumbnailScrollId: String?
+    @State private var isThumbnailScrolling = false
+    @State private var isMainImageDriven = false
 
     @Environment(\.dismiss) private var dismiss
 
@@ -24,18 +28,8 @@ struct ImageDetailView: View {
     init(item: Item, items: [Item]) {
         selectedItem = item
         self.items = items
-    }
-
-    private var selectedItemId: Binding<String?> {
-        Binding(
-            get: { selectedItem.itemId },
-            set: { newId in
-                if let newId = newId, let item = items.first(where: { $0.itemId == newId }) {
-                    selectedItem = item
-                    prefetchAdjacentImages(for: item)
-                }
-            }
-        )
+        _mainScrollId = State(initialValue: item.itemId)
+        _thumbnailScrollId = State(initialValue: item.itemId)
     }
 
     private func getImageURL(for item: Item) -> URL? {
@@ -77,7 +71,8 @@ struct ImageDetailView: View {
         GeometryReader { geometry in
             NavigationStack {
                 ZStack {
-                    isNoUI ? Color.black : Color.white
+                    (isNoUI ? Color.black : Color.white)
+                        .ignoresSafeArea()
 
                     ScrollView(.horizontal) {
                         LazyHStack(spacing: 0) {
@@ -88,17 +83,83 @@ struct ImageDetailView: View {
                                     isNoUI: $isNoUI,
                                     swipeDisabled: $swipeDisabled
                                 )
+                                .containerRelativeFrame(.horizontal)
                                 .id(item.itemId)
                             }
                         }
                         .scrollTargetLayout()
                     }
+                    .ignoresSafeArea()
                     .scrollDisabled(swipeDisabled)
                     .scrollIndicators(.hidden)
                     .scrollTargetBehavior(.paging)
-                    .scrollPosition(id: selectedItemId)
+                    .scrollPosition(id: $mainScrollId)
+
+                    if !isNoUI {
+                        VStack {
+                            Spacer()
+
+                            ScrollView(.horizontal) {
+                                LazyHStack(spacing: 3) {
+                                    ForEach(Array(items.enumerated()), id: \.element.itemId) { index, item in
+                                        let isSelected = !isThumbnailScrolling && item.itemId == selectedItem.itemId
+                                        let selectedIndex = items.firstIndex(where: { $0.itemId == selectedItem.itemId })
+                                        let isBeforeSelected = selectedIndex != nil && !isThumbnailScrolling && index < selectedIndex!
+                                        let isAfterSelected = selectedIndex != nil && !isThumbnailScrolling && index > selectedIndex!
+
+                                        ItemThumbnailView(item: item)
+                                            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                                            .aspectRatio(isSelected ? 1.0 : 0.7, contentMode: .fill)
+                                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                                            .contentShape(RoundedRectangle(cornerRadius: 3))
+                                            .offset(x: isBeforeSelected ? -8 : (isAfterSelected ? 8 : 0))
+                                            .animation(.easeInOut(duration: 0.2), value: selectedItem.itemId)
+                                            .animation(.easeInOut(duration: 0.2), value: isThumbnailScrolling)
+                                            .onTapGesture {
+                                                thumbnailScrollId = item.itemId
+                                            }
+                                            .id(item.itemId)
+                                    }
+                                }
+                                .scrollTargetLayout()
+                            }
+                            .scrollIndicators(.hidden)
+                            .scrollTargetBehavior(.viewAligned)
+                            .scrollPosition(id: $thumbnailScrollId, anchor: .center)
+                            .safeAreaPadding(.horizontal, geometry.size.width / 2 - 15)
+                            .frame(height: 30)
+                            .clipShape(.rect)
+                            .mask {
+                                LinearGradient(gradient: Gradient(stops: [
+                                    .init(color: .clear, location: 0.02),
+                                    .init(color: .black, location: 0.08),
+                                    .init(color: .black, location: 0.92),
+                                    .init(color: .clear, location: 0.98),
+                                ]), startPoint: .leading, endPoint: .trailing)
+                            }
+                            .onAppear {
+                                // Force scroll position to update after view appears
+                                thumbnailScrollId = nil
+                                DispatchQueue.main.async {
+                                    thumbnailScrollId = selectedItem.itemId
+                                    isThumbnailScrolling = false
+                                }
+                            }
+                            .onChange(of: geometry.size) {
+                                // Force scroll position to update after rotate screen
+                                thumbnailScrollId = nil
+                                DispatchQueue.main.async {
+                                    thumbnailScrollId = selectedItem.itemId
+                                    isThumbnailScrolling = false
+                                }
+                            }
+                            .onScrollPhaseChange { _, newPhase in
+                                isThumbnailScrolling = !isMainImageDriven && newPhase != .idle
+                            }
+                        }
+                        .transition(.opacity)
+                    }
                 }
-                .ignoresSafeArea()
                 .navigationTitle(selectedItem.name)
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationBarBackButtonHidden(true)
@@ -124,6 +185,26 @@ struct ImageDetailView: View {
         .onDisappear {
             prefetcher.stopPrefetching()
         }
+        .onChange(of: mainScrollId) {
+            if let newId = mainScrollId, let item = items.first(where: { $0.itemId == newId }) {
+                selectedItem = item
+            }
+        }
+        .onChange(of: thumbnailScrollId) {
+            if let newId = thumbnailScrollId, let item = items.first(where: { $0.itemId == newId }) {
+                selectedItem = item
+            }
+        }
+        .onChange(of: selectedItem) {
+            prefetchAdjacentImages(for: selectedItem)
+            mainScrollId = selectedItem.itemId
+            isMainImageDriven = true
+            withAnimation(.easeInOut(duration: 0.2)) {
+                thumbnailScrollId = selectedItem.itemId
+            } completion: {
+                isMainImageDriven = false
+            }
+        }
     }
 }
 
@@ -135,6 +216,7 @@ struct ItemImageViewer: View {
 
     @State private var scale: CGFloat = 1
     @State private var lastScale: CGFloat = 1
+    @State private var wasNoUIBeforeZoom: Bool = false
 
     @Environment(\.dismiss) private var dismiss
 
@@ -166,6 +248,20 @@ struct ItemImageViewer: View {
             height: size.height
         )
         .ignoresSafeArea()
+        .onChange(of: scale) { oldValue, newValue in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                if oldValue == 1 && newValue > 1 {
+                    // Starting to zoom in from normal scale
+                    wasNoUIBeforeZoom = isNoUI
+                    isNoUI = true
+                } else if newValue == 1 && oldValue > 1 {
+                    // Zoom reset to normal scale
+                    if !wasNoUIBeforeZoom {
+                        isNoUI = false
+                    }
+                }
+            }
+        }
     }
 
     private func getImageFrame() -> CGSize {
@@ -200,6 +296,12 @@ struct ItemImageViewer: View {
                 if scale < 1 {
                     withAnimation {
                         scale = 1
+                    }
+                    // Handle zoom reset via pinch
+                    if !wasNoUIBeforeZoom {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isNoUI = false
+                        }
                     }
                 }
             }
