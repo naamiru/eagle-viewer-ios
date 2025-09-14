@@ -12,24 +12,21 @@ import SwiftUI
 struct ImageDetailView: View {
     @State var selectedItem: Item
     let items: [Item]
+    let dismiss: (Item) -> Void
 
     @State private var isNoUI = false
     @State private var swipeDisabled = false
     @State private var mainScrollId: String?
     @State private var thumbnailScrollId: String?
     @State private var isThumbnailScrolling = false
-    @State private var isMainImageDriven = false
-
-    @Environment(\.dismiss) private var dismiss
 
     private let prefetcher = ImagePrefetcher()
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
 
-    init(item: Item, items: [Item]) {
+    init(item: Item, items: [Item], dismiss: @escaping (Item) -> Void) {
         selectedItem = item
         self.items = items
-        _mainScrollId = State(initialValue: item.itemId)
-        _thumbnailScrollId = State(initialValue: item.itemId)
+        self.dismiss = dismiss
     }
 
     private func getImageURL(for item: Item) -> URL? {
@@ -81,7 +78,8 @@ struct ImageDetailView: View {
                                     item: item,
                                     size: geometry.size,
                                     isNoUI: $isNoUI,
-                                    swipeDisabled: $swipeDisabled
+                                    swipeDisabled: $swipeDisabled,
+                                    dismiss: dismiss
                                 )
                                 .containerRelativeFrame(.horizontal)
                                 .id(item.itemId)
@@ -90,10 +88,15 @@ struct ImageDetailView: View {
                         .scrollTargetLayout()
                     }
                     .ignoresSafeArea()
+                    .clipped()
                     .scrollDisabled(swipeDisabled)
                     .scrollIndicators(.hidden)
                     .scrollTargetBehavior(.paging)
                     .scrollPosition(id: $mainScrollId)
+                    .onAppear {
+                        // Force scroll position to update after view appears
+                        mainScrollId = selectedItem.itemId
+                    }
 
                     if !isNoUI {
                         VStack {
@@ -139,6 +142,7 @@ struct ImageDetailView: View {
                             }
                             .onAppear {
                                 // Force scroll position to update after view appears
+                                // (when initialized + UI enabled)
                                 thumbnailScrollId = nil
                                 DispatchQueue.main.async {
                                     thumbnailScrollId = selectedItem.itemId
@@ -153,8 +157,16 @@ struct ImageDetailView: View {
                                     isThumbnailScrolling = false
                                 }
                             }
-                            .onScrollPhaseChange { _, newPhase in
-                                isThumbnailScrolling = !isMainImageDriven && newPhase != .idle
+                            .onScrollPhaseChange { lastPhase, newPhase in
+                                // detect if thumbnails slider is scrolled by user
+
+                                if lastPhase == .idle && newPhase == .animating {
+                                    // when main scrolled: .idle -> .animating -> .idle
+                                    isThumbnailScrolling = false
+                                } else {
+                                    // when thumbnail scrolled: .idle -> .interacting -> .decelerating -> .idle
+                                    isThumbnailScrolling = newPhase != .idle
+                                }
                             }
                         }
                         .transition(.opacity)
@@ -169,7 +181,7 @@ struct ImageDetailView: View {
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Button(action: {
-                            dismiss()
+                            dismiss(selectedItem)
                         }) {
                             Image(systemName: "chevron.down")
                         }
@@ -205,11 +217,8 @@ struct ImageDetailView: View {
         .onChange(of: selectedItem) {
             prefetchAdjacentImages(for: selectedItem)
             mainScrollId = selectedItem.itemId
-            isMainImageDriven = true
             withAnimation(.easeInOut(duration: 0.2)) {
                 thumbnailScrollId = selectedItem.itemId
-            } completion: {
-                isMainImageDriven = false
             }
         }
     }
@@ -220,12 +229,11 @@ struct ItemImageViewer: View {
     let size: CGSize
     @Binding var isNoUI: Bool
     @Binding var swipeDisabled: Bool
+    let dismiss: (Item) -> Void
 
     @State private var scale: CGFloat = 1
     @State private var lastScale: CGFloat = 1
     @State private var wasNoUIBeforeZoom: Bool = false
-
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView([.horizontal, .vertical], showsIndicators: false) {
@@ -321,7 +329,7 @@ struct ItemImageViewer: View {
 
                 let w = abs(value.translation.width), h = value.translation.height
                 if h > 10, w < 20, w / h < 0.2 {
-                    dismiss()
+                    dismiss(item)
                 }
             }
     }
