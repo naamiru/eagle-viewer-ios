@@ -22,14 +22,19 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                CollectionLinksView()
+                if searchManager.debouncedSearchText.isEmpty {
+                    CollectionLinksView()
+                }
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Folders")
                         .font(.title2)
                         .fontWeight(.semibold)
                         .foregroundColor(.secondary)
                         .padding(.horizontal, 20)
-                    FolderListRequestView(request: $foldersRequest, showPlaceholder: true)
+                    FolderListRequestView(
+                        request: $foldersRequest,
+                        placeholderType: searchManager.debouncedSearchText.isEmpty ? .default : .search
+                    )
                 }
             }
         }
@@ -74,8 +79,7 @@ struct HomeView: View {
         }
         .onAppear {
             searchManager.setSearchHandler { text in
-                // Handle search text changes
-                // TODO: Implement search filtering
+                foldersRequest.searchText = text
             }
         }
     }
@@ -84,6 +88,7 @@ struct HomeView: View {
 struct RootFoldersRequest: ValueObservationQueryable {
     var libraryId: Int64?
     var folderSortOption: FolderSortOption
+    var searchText: String = ""
 
     static var defaultValue: [Folder] { [] }
 
@@ -92,7 +97,10 @@ struct RootFoldersRequest: ValueObservationQueryable {
             return []
         }
 
-        return try FolderQuery.rootFolders(libraryId: libraryId, folderSortOption: folderSortOption)
-            .fetchAll(db)
+        return try FolderQuery.rootFolders(
+            libraryId: libraryId,
+            folderSortOption: folderSortOption,
+            searchText: searchText
+        ).fetchAll(db)
     }
 }

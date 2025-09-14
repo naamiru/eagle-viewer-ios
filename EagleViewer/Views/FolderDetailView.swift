@@ -95,7 +95,7 @@ struct FolderDetailInnerRequestView: View {
                                 .foregroundColor(.secondary)
                                 .padding(.horizontal, 20)
                         }
-                        FolderListView(folders: childFolders, showPlaceholder: false)
+                        FolderListView(folders: childFolders, placeholderType: .none)
                     }
                 }
                 if !items.isEmpty || childFolders.isEmpty {
@@ -113,7 +113,7 @@ struct FolderDetailInnerRequestView: View {
             }
         }
         .onAppear {
-            searchManager.setSearchHandler { text in
+            searchManager.setSearchHandler { _ in
                 // Handle search text changes
                 // TODO: Implement search filtering
             }

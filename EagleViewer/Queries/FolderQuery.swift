@@ -8,11 +8,26 @@
 import GRDB
 
 class FolderQuery {
-    static func rootFolders(libraryId: Int64, folderSortOption: FolderSortOption) -> QueryInterfaceRequest<Folder> {
-        Folder
+    static func rootFolders(libraryId: Int64, folderSortOption: FolderSortOption, searchText: String = "") -> QueryInterfaceRequest<Folder> {
+        var query = Folder
             .filter(Column("libraryId") == libraryId)
             .filter(Column("parentId") == nil)
-            .order(sql: SortQuery.folderOrderSQL(by: folderSortOption))
+
+        // Apply search filter if searchText is not empty
+        let trimmedSearch = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedSearch.isEmpty {
+            let keywords = trimmedSearch.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+            for keyword in keywords {
+                // Escape special characters for SQL LIKE
+                let escapedKeyword = keyword
+                    .replacingOccurrences(of: "\\", with: "\\\\")
+                    .replacingOccurrences(of: "%", with: "\\%")
+                    .replacingOccurrences(of: "_", with: "\\_")
+                query = query.filter(sql: "name LIKE ? ESCAPE '\\'", arguments: ["%\(escapedKeyword)%"])
+            }
+        }
+
+        return query.order(sql: SortQuery.folderOrderSQL(by: folderSortOption))
     }
 
     static func childFolders(libraryId: Int64, parentId: String, folderSortOption: FolderSortOption) -> QueryInterfaceRequest<Folder> {

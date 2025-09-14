@@ -19,11 +19,9 @@ struct SearchBottomBarView: View {
 
                 TextField("Search", text: $searchManager.searchText)
                     .textFieldStyle(.plain)
+                    .textInputAutocapitalization(.never)
                     .focused($isSearchFieldFocused)
                     .submitLabel(.search)
-                    .onChange(of: searchManager.searchText) { _, newText in
-                        searchManager.updateSearchText(newText)
-                    }
 
                 if !searchManager.searchText.isEmpty {
                     Button(action: {
