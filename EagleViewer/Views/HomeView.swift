@@ -17,6 +17,7 @@ struct HomeView: View {
 
     @EnvironmentObject private var navigationManager: NavigationManager
     @EnvironmentObject private var settingsManager: SettingsManager
+    @EnvironmentObject private var searchManager: SearchManager
 
     var body: some View {
         ScrollView {
@@ -70,6 +71,12 @@ struct HomeView: View {
         }
         .onChange(of: settingsManager.folderSortOption, initial: true) {
             foldersRequest.folderSortOption = settingsManager.folderSortOption
+        }
+        .onAppear {
+            searchManager.setSearchHandler { text in
+                // Handle search text changes
+                // TODO: Implement search filtering
+            }
         }
     }
 }

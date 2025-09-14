@@ -14,7 +14,6 @@ enum AppEvent {
     case globalSortChanged
     case importProgressChanged
     case folderCacheInvalidated
-    case searchToggled
 }
 
 class EventCenter: ObservableObject {

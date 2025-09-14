@@ -74,6 +74,8 @@ struct FolderDetailInnerRequestView: View {
     @Binding var itemsRequest: FolderItemsRequest
     @Binding var childFoldersRequest: ChildFoldersRequest
 
+    @EnvironmentObject private var searchManager: SearchManager
+
     init(itemsRequest: Binding<FolderItemsRequest>, childFoldersRequest: Binding<ChildFoldersRequest>) {
         self._itemsRequest = itemsRequest
         self._childFoldersRequest = childFoldersRequest
@@ -108,6 +110,12 @@ struct FolderDetailInnerRequestView: View {
                         ItemListView(items: items, showPlaceholder: childFolders.isEmpty)
                     }
                 }
+            }
+        }
+        .onAppear {
+            searchManager.setSearchHandler { text in
+                // Handle search text changes
+                // TODO: Implement search filtering
             }
         }
     }

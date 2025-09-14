@@ -130,11 +130,13 @@ struct SortMenu: View {
 }
 
 struct SearchButton: View {
-    @EnvironmentObject private var eventCenter: EventCenter
+    @EnvironmentObject private var searchManager: SearchManager
 
     var body: some View {
         Button(action: {
-            eventCenter.post(.searchToggled)
+            withAnimation(.easeInOut(duration: 0.25)) {
+                searchManager.showSearch()
+            }
         }) {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(Color.primary)

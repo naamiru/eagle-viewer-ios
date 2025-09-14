@@ -44,7 +44,7 @@ actor CacheManager {
             await MainActor.run {
                 EventCenter.shared.post(.folderCacheInvalidated)
             }
-        case .folderCacheInvalidated, .searchToggled:
+        case .folderCacheInvalidated:
             break
         }
     }
