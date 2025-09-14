@@ -54,5 +54,8 @@ class SearchManager: ObservableObject {
 
     func unfocusSearch() {
         unfocusHandler?()
+        if searchText.isEmpty {
+            hideSearch()
+        }
     }
 }

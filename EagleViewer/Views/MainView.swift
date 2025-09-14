@@ -37,6 +37,7 @@ struct MainView: View {
 
             BottomBarView()
         }
+        .ignoresSafeArea(.keyboard)
         .overlay(alignment: .bottom) {
             if searchManager.isSearchActive {
                 SearchBottomBarView()

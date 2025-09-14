@@ -32,7 +32,7 @@ struct SearchBottomBarView: View {
                     }
                 }
             }
-            .padding(12)
+            .padding(8)
             .background(Color(UIColor.secondarySystemBackground))
             .cornerRadius(10)
 
@@ -42,7 +42,7 @@ struct SearchBottomBarView: View {
             }
         }
         .padding(.horizontal)
-        .padding(.vertical, 12)
+        .padding(.vertical, 8)
         .background(Color(UIColor.systemBackground))
         .overlay(
             Rectangle()
