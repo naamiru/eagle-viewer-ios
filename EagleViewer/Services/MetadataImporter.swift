@@ -193,7 +193,7 @@ struct MetadataImporter {
                 }
                 
                 // Build Item instances from metadata
-                let batchItems: [(item: Item, metadata: ItemMetadataJSON)] = batchMetadata.map { itemId, metadata in
+                let batchItems: [(item: StoredItem, metadata: ItemMetadataJSON)] = batchMetadata.map { itemId, metadata in
                     let item = buildItem(libraryId: libraryId, itemId: itemId, metadata: metadata)
                     return (item: item, metadata: metadata)
                 }
@@ -391,9 +391,9 @@ struct MetadataImporter {
         libraryId: Int64,
         itemId: String,
         metadata: ItemMetadataJSON
-    ) -> Item {
+    ) -> StoredItem {
         let name = metadata.name ?? ""
-        return Item(
+        return StoredItem(
             libraryId: libraryId,
             itemId: itemId,
             name: name,
@@ -416,7 +416,7 @@ struct MetadataImporter {
     }
     
     private func copyItemImages(
-        item: Item,
+        item: StoredItem,
         libraryUrl: URL,
         localUrl: URL
     ) async throws {
@@ -456,7 +456,7 @@ struct MetadataImporter {
     
     private func processItem(
         db: Database,
-        item: Item,
+        item: StoredItem,
         metadata: ItemMetadataJSON,
         existingItemIds: Set<String> = []
     ) throws {

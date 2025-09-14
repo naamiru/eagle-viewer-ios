@@ -8,24 +8,32 @@
 import GRDB
 
 class CollectionQuery {
+    static var itemColumns: [SQLSelectable] {
+        [Column("libraryId"), Column("itemId"), Column("name"), Column("ext"),
+         Column("height"), Column("width"), Column("noThumbnail"), Column("duration")]
+    }
+
     static func allItems(libraryId: Int64, sortOption: GlobalSortOption, searchText: String = "") -> QueryInterfaceRequest<Item> {
         searchItems(libraryId: libraryId, searchText: searchText)
             .order(sql: SortQuery.itemOrderSQL(by: sortOption))
+            .select(itemColumns, as: Item.self)
     }
 
     static func uncategorizedItems(libraryId: Int64, sortOption: GlobalSortOption, searchText: String = "") -> QueryInterfaceRequest<Item> {
         return searchItems(libraryId: libraryId, searchText: searchText)
             .filter(sql: "NOT EXISTS (SELECT * FROM folderItem WHERE libraryId = item.libraryId AND itemId = item.itemId)")
             .order(sql: SortQuery.itemOrderSQL(by: sortOption))
+            .select(itemColumns, as: Item.self)
     }
 
     static func randomItems(libraryId: Int64, searchText: String = "") -> QueryInterfaceRequest<Item> {
         searchItems(libraryId: libraryId, searchText: searchText)
             .order(sql: "RANDOM()")
+            .select(itemColumns, as: Item.self)
     }
 
-    static func searchItems(libraryId: Int64, searchText: String) -> QueryInterfaceRequest<Item> {
-        var query = Item
+    static func searchItems(libraryId: Int64, searchText: String) -> QueryInterfaceRequest<StoredItem> {
+        var query = StoredItem
             .filter(Column("libraryId") == libraryId)
             .filter(Column("isDeleted") == false)
 
@@ -47,7 +55,7 @@ class CollectionQuery {
 
                 let likePattern = "%\(escapedKeyword)%"
                 query = query.filter(sql: "(\(nameCondition) OR \(annotationCondition) OR \(tagsCondition))",
-                                   arguments: [likePattern, likePattern, likePattern])
+                                     arguments: [likePattern, likePattern, likePattern])
             }
         }
 

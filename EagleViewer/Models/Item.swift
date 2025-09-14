@@ -8,13 +8,33 @@
 import Foundation
 import GRDB
 
-struct Item: Codable, Identifiable, FetchableRecord, MutablePersistableRecord, Hashable {
-    struct ID: Codable, Hashable {
-        let libraryId: Int64
-        let itemId: String
+protocol ItemPathProvider {
+    var itemId: String { get }
+    var name: String { get }
+    var ext: String { get }
+    var noThumbnail: Bool { get }
+}
+
+extension ItemPathProvider {
+    var imagePath: String {
+        "images/\(itemId).info/\(name).\(ext)"
     }
 
-    var id: ID { ID(libraryId: libraryId, itemId: itemId) }
+    var thumbnailPath: String {
+        if noThumbnail {
+            // Use original item file
+            return imagePath
+        } else {
+            // Use thumbnail
+            return "images/\(itemId).info/\(name)_thumbnail.png"
+        }
+    }
+}
+
+struct StoredItem: Codable, Identifiable, FetchableRecord, MutablePersistableRecord, Hashable, ItemPathProvider {
+    static var databaseTableName: String { Item.databaseTableName }
+
+    var id: Item.ID { .init(libraryId: libraryId, itemId: itemId) }
 
     var libraryId: Int64
     var itemId: String
@@ -34,20 +54,28 @@ struct Item: Codable, Identifiable, FetchableRecord, MutablePersistableRecord, H
     var duration: Double
     var tags: [String]
     var annotation: String
+}
 
-    var imagePath: String {
-        "images/\(itemId).info/\(name).\(ext)"
+extension StoredItem: TableRecord {
+    static let folderItems = hasMany(FolderItem.self, using: ForeignKey(["libraryId", "itemId"]))
+}
+
+struct Item: Codable, Identifiable, FetchableRecord, Hashable, ItemPathProvider {
+    struct ID: Codable, Hashable {
+        let libraryId: Int64
+        let itemId: String
     }
 
-    var thumbnailPath: String {
-        if noThumbnail {
-            // Use original item file
-            return imagePath
-        } else {
-            // Use thumbnail
-            return "images/\(itemId).info/\(name)_thumbnail.png"
-        }
-    }
+    var id: ID { .init(libraryId: libraryId, itemId: itemId) }
+
+    var libraryId: Int64
+    var itemId: String
+    var name: String
+    var ext: String
+    var height: Int
+    var width: Int
+    var noThumbnail: Bool
+    var duration: Double
 }
 
 extension Item: TableRecord {
