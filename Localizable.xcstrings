@@ -342,7 +342,14 @@
       }
     },
     "Nothing Found" : {
-
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "何も見つかりませんでした"
+          }
+        }
+      }
     },
     "OK" : {
       "localizations" : {
@@ -415,7 +422,14 @@
       }
     },
     "Search" : {
-
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "検索"
+          }
+        }
+      }
     },
     "Select a folder ending with \".library\"" : {
       "localizations" : {
