@@ -32,6 +32,8 @@ struct Item: Codable, Identifiable, FetchableRecord, MutablePersistableRecord, H
     var noThumbnail: Bool
     var star: Int
     var duration: Double
+    var tags: [String]
+    var annotation: String
 
     var imagePath: String {
         "images/\(itemId).info/\(name).\(ext)"

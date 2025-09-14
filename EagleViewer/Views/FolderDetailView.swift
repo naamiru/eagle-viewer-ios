@@ -107,15 +107,15 @@ struct FolderDetailInnerRequestView: View {
                                 .foregroundColor(.secondary)
                                 .padding(.horizontal, 20)
                         }
-                        ItemListView(items: items, showPlaceholder: childFolders.isEmpty)
+                        ItemListView(items: items, placeholderType: childFolders.isEmpty ? (searchManager.debouncedSearchText.isEmpty ? .default : .search) : .none)
                     }
                 }
             }
         }
         .onAppear {
-            searchManager.setSearchHandler { _ in
-                // Handle search text changes
-                // TODO: Implement search filtering
+            searchManager.setSearchHandler { text in
+                itemsRequest.searchText = text
+                childFoldersRequest.searchText = text
             }
         }
     }
@@ -138,6 +138,7 @@ struct FolderRequest: ValueObservationQueryable {
 struct ChildFoldersRequest: ValueObservationQueryable {
     var folder: Folder
     var folderSortOption: FolderSortOption
+    var searchText: String = ""
 
     static var defaultValue: [Folder] { [] }
 
@@ -145,7 +146,8 @@ struct ChildFoldersRequest: ValueObservationQueryable {
         return try FolderQuery.childFolders(
             libraryId: folder.libraryId,
             parentId: folder.folderId,
-            folderSortOption: folderSortOption
+            folderSortOption: folderSortOption,
+            searchText: searchText
         ).fetchAll(db)
     }
 }
@@ -153,11 +155,12 @@ struct ChildFoldersRequest: ValueObservationQueryable {
 struct FolderItemsRequest: ValueObservationQueryable {
     var folder: Folder
     var globalSortOption: GlobalSortOption
+    var searchText: String = ""
 
     static var defaultValue: [Item] { [] }
 
     func fetch(_ db: Database) throws -> [Item] {
-        return try FolderQuery.folderItems(folder: folder, globalSortOption: globalSortOption)
+        return try FolderQuery.folderItems(folder: folder, globalSortOption: globalSortOption, searchText: searchText)
             .fetchAll(db)
     }
 }

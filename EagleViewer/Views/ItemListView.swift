@@ -11,19 +11,26 @@ import SwiftUI
 
 struct ItemListView: View {
     let items: [Item]
-    let showPlaceholder: Bool
+    let placeholderType: PlaceholderType
 
     @State private var selectedItem: Item?
     @State private var scrollToItem: Item?
 
-    init(items: [Item], showPlaceholder: Bool = false) {
+    init(items: [Item], placeholderType: PlaceholderType = .none) {
         self.items = items
-        self.showPlaceholder = showPlaceholder
+        self.placeholderType = placeholderType
     }
 
     var body: some View {
-        if items.isEmpty && showPlaceholder {
-            NoItemView()
+        if items.isEmpty && placeholderType != .none {
+            switch placeholderType {
+            case .search:
+                NoResultsView()
+            case .default:
+                NoItemView()
+            case .none:
+                EmptyView()
+            }
         } else {
             ScrollViewReader { proxy in
                 AdaptiveGridView(isCollection: false) {
@@ -68,15 +75,15 @@ struct ItemListView: View {
 
 struct ItemListRequestView<T: ValueObservationQueryable>: View where T.Value == [Item], T.Context == DatabaseContext {
     @Query<T> var items: [Item]
-    let showPlaceholder: Bool
+    let placeholderType: PlaceholderType
 
-    init(request: Binding<T>, showPlaceholder: Bool = false) {
+    init(request: Binding<T>, placeholderType: PlaceholderType = .none) {
         _items = Query(request, in: \.databaseContext)
-        self.showPlaceholder = showPlaceholder
+        self.placeholderType = placeholderType
     }
 
     var body: some View {
-        ItemListView(items: items, showPlaceholder: showPlaceholder)
+        ItemListView(items: items, placeholderType: placeholderType)
     }
 }
 

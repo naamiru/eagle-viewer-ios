@@ -89,7 +89,17 @@ struct Migration {
             // Index for efficient manual sort in folder
             try db.create(index: "idx_folderItem_order", on: "folderItem", columns: ["libraryId", "folderId", "orderValue"])
         }
-        
+
+        migrator.registerMigration("add-item-tags-annotation") { db in
+            try db.alter(table: "item") { t in
+                t.add(column: "tags", .jsonText).defaults(to: "[]")
+                t.add(column: "annotation", .text).defaults(to: "")
+            }
+
+            // Reset all import timestamps to force re-import of items with new fields
+            try db.execute(sql: "UPDATE library SET lastImportedItemMTime = 0")
+        }
+
         return migrator
     }
 }

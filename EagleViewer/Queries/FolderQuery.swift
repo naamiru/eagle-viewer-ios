@@ -8,12 +8,9 @@
 import GRDB
 
 class FolderQuery {
-    static func rootFolders(libraryId: Int64, folderSortOption: FolderSortOption, searchText: String = "") -> QueryInterfaceRequest<Folder> {
-        var query = Folder
-            .filter(Column("libraryId") == libraryId)
-            .filter(Column("parentId") == nil)
+    static func searchFolders(libraryId: Int64, searchText: String) -> QueryInterfaceRequest<Folder> {
+        var query = Folder.filter(Column("libraryId") == libraryId)
 
-        // Apply search filter if searchText is not empty
         let trimmedSearch = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedSearch.isEmpty {
             let keywords = trimmedSearch.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
@@ -27,20 +24,23 @@ class FolderQuery {
             }
         }
 
-        return query.order(sql: SortQuery.folderOrderSQL(by: folderSortOption))
+        return query
     }
 
-    static func childFolders(libraryId: Int64, parentId: String, folderSortOption: FolderSortOption) -> QueryInterfaceRequest<Folder> {
-        Folder
-            .filter(Column("libraryId") == libraryId)
+    static func rootFolders(libraryId: Int64, folderSortOption: FolderSortOption, searchText: String = "") -> QueryInterfaceRequest<Folder> {
+        searchFolders(libraryId: libraryId, searchText: searchText)
+            .filter(Column("parentId") == nil)
+            .order(sql: SortQuery.folderOrderSQL(by: folderSortOption))
+    }
+
+    static func childFolders(libraryId: Int64, parentId: String, folderSortOption: FolderSortOption, searchText: String = "") -> QueryInterfaceRequest<Folder> {
+        searchFolders(libraryId: libraryId, searchText: searchText)
             .filter(Column("parentId") == parentId)
             .order(sql: SortQuery.folderOrderSQL(by: folderSortOption))
     }
 
-    static func folderItems(folder: Folder, globalSortOption: GlobalSortOption) -> QueryInterfaceRequest<Item> {
-        Item
-            .filter(Column("libraryId") == folder.libraryId)
-            .filter(Column("isDeleted") == false)
+    static func folderItems(folder: Folder, globalSortOption: GlobalSortOption, searchText: String = "") -> QueryInterfaceRequest<Item> {
+        CollectionQuery.searchItems(libraryId: folder.libraryId, searchText: searchText)
             .joining(required: Item.folderItems
                 .filter(Column("folderId") == folder.folderId)
             )

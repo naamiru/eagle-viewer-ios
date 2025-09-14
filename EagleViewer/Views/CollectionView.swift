@@ -36,16 +36,17 @@ struct CollectionView<T: CollectionQueryable>: View where T.Value == [Item], T.C
     @Environment(\.library) private var library
     @EnvironmentObject private var settingsManager: SettingsManager
     @EnvironmentObject private var navigationManager: NavigationManager
+    @EnvironmentObject private var searchManager: SearchManager
 
     init(title: String, navigationDestination: NavigationDestination) {
         self.title = title
         self.navigationDestination = navigationDestination
-        _request = State(initialValue: T(libraryId: 0, sortOption: .defaultValue))
+        _request = State(initialValue: T(libraryId: 0, sortOption: .defaultValue, searchText: ""))
     }
 
     var body: some View {
         ScrollView {
-            ItemListRequestView(request: $request, showPlaceholder: true)
+            ItemListRequestView(request: $request, placeholderType: searchManager.debouncedSearchText.isEmpty ? .default : .search)
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
@@ -55,23 +56,30 @@ struct CollectionView<T: CollectionQueryable>: View where T.Value == [Item], T.C
         .onChange(of: settingsManager.globalSortOption, initial: true) {
             request.sortOption = settingsManager.globalSortOption
         }
+        .onAppear {
+            searchManager.setSearchHandler { text in
+                request.searchText = text
+            }
+        }
     }
 }
 
 protocol CollectionQueryable: ValueObservationQueryable {
     var libraryId: Int64 { get set }
     var sortOption: GlobalSortOption { get set }
-    init(libraryId: Int64, sortOption: GlobalSortOption)
+    var searchText: String { get set }
+    init(libraryId: Int64, sortOption: GlobalSortOption, searchText: String)
 }
 
 struct AllCollectionRequest: CollectionQueryable {
     var libraryId: Int64
     var sortOption: GlobalSortOption
+    var searchText: String = ""
 
     static var defaultValue: [Item] { [] }
 
     func fetch(_ db: Database) throws -> [Item] {
-        try CollectionQuery.allItems(libraryId: libraryId, sortOption: sortOption)
+        try CollectionQuery.allItems(libraryId: libraryId, sortOption: sortOption, searchText: searchText)
             .fetchAll(db)
     }
 }
@@ -79,11 +87,12 @@ struct AllCollectionRequest: CollectionQueryable {
 struct UncategorizedCollectionRequest: CollectionQueryable {
     var libraryId: Int64
     var sortOption: GlobalSortOption
+    var searchText: String = ""
 
     static var defaultValue: [Item] { [] }
 
     func fetch(_ db: Database) throws -> [Item] {
-        try CollectionQuery.uncategorizedItems(libraryId: libraryId, sortOption: sortOption)
+        try CollectionQuery.uncategorizedItems(libraryId: libraryId, sortOption: sortOption, searchText: searchText)
             .fetchAll(db)
     }
 }
@@ -91,11 +100,12 @@ struct UncategorizedCollectionRequest: CollectionQueryable {
 struct RandomCollectionRequest: CollectionQueryable {
     var libraryId: Int64
     var sortOption: GlobalSortOption
+    var searchText: String = ""
 
     static var defaultValue: [Item] { [] }
 
     func fetch(_ db: Database) throws -> [Item] {
-        try CollectionQuery.randomItems(libraryId: libraryId)
+        try CollectionQuery.randomItems(libraryId: libraryId, searchText: searchText)
             .fetchAll(db)
     }
 }

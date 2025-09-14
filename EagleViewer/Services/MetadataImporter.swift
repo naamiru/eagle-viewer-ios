@@ -63,6 +63,8 @@ struct MetadataImporter {
         let duration: Double?
         let folders: [String]?
         let order: [String: String]?
+        let tags: [String]?
+        let annotation: String?
     }
     
     struct MTimeJSON: Decodable {
@@ -407,7 +409,9 @@ struct MetadataImporter {
             lastModified: metadata.lastModified ?? 0,
             noThumbnail: metadata.noThumbnail ?? false,
             star: metadata.star ?? 0,
-            duration: metadata.duration ?? 0
+            duration: metadata.duration ?? 0,
+            tags: metadata.tags ?? [],
+            annotation: metadata.annotation ?? ""
         )
     }
     
