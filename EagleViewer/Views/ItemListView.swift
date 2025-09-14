@@ -11,8 +11,10 @@ import SwiftUI
 
 struct ItemListView: View {
     let items: [Item]
-    @State private var selectedItem: Item?
     let showPlaceholder: Bool
+
+    @State private var selectedItem: Item?
+    @State private var scrollToItem: Item?
 
     init(items: [Item], showPlaceholder: Bool = false) {
         self.items = items
@@ -23,26 +25,41 @@ struct ItemListView: View {
         if items.isEmpty && showPlaceholder {
             NoItemView()
         } else {
-            AdaptiveGridView(isCollection: false) {
-                ForEach(items) { item in
-                    ItemThumbnailView(item: item)
-                        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-                        .aspectRatio(1, contentMode: .fill)
-                        .clipped()
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedItem = item
-                        }
+            ScrollViewReader { proxy in
+                AdaptiveGridView(isCollection: false) {
+                    ForEach(items) { item in
+                        ItemThumbnailView(item: item)
+                            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                            .aspectRatio(1, contentMode: .fill)
+                            .clipped()
+                            .contentShape(Rectangle())
+                            .id(item.itemId)
+                            .onTapGesture {
+                                selectedItem = item
+                            }
+                    }
                 }
-            }
-            .fullScreenCover(item: $selectedItem) { item in
-                if ItemVideoView.isVideo(item: item) {
-                    ItemVideoView(item: item)
-                } else {
-                    ImageDetailView(
-                        item: item,
-                        items: items.filter { !ItemVideoView.isVideo(item: $0) }
-                    )
+                .fullScreenCover(item: $selectedItem) { item in
+                    if ItemVideoView.isVideo(item: item) {
+                        ItemVideoView(item: item)
+                    } else {
+                        ImageDetailView(
+                            item: item,
+                            items: items.filter { !ItemVideoView.isVideo(item: $0) },
+                            dismiss: { item in
+                                if item != selectedItem {
+                                    scrollToItem = item
+                                }
+                                selectedItem = nil
+                            }
+                        )
+                    }
+                }
+                .onChange(of: scrollToItem) {
+                    if let item = scrollToItem {
+                        proxy.scrollTo(item.itemId, anchor: .center)
+                        scrollToItem = nil
+                    }
                 }
             }
         }
