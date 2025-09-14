@@ -112,6 +112,7 @@ struct FolderDetailInnerRequestView: View {
                 }
             }
         }
+        .searchDismissible()
         .onAppear {
             searchManager.setSearchHandler { text in
                 itemsRequest.searchText = text

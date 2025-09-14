@@ -52,6 +52,9 @@ struct SearchBottomBarView: View {
         )
         .onAppear {
             isSearchFieldFocused = true
+            searchManager.setUnfocusHandler {
+                isSearchFieldFocused = false
+            }
         }
     }
 }

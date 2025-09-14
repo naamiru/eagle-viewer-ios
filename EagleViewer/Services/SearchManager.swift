@@ -14,6 +14,7 @@ class SearchManager: ObservableObject {
     @Published var isSearchActive = false
 
     private var currentPageHandler: ((String) -> Void)?
+    private var unfocusHandler: (() -> Void)?
     private var searchCancellable: AnyCancellable?
 
     init() {
@@ -45,5 +46,13 @@ class SearchManager: ObservableObject {
     func clearSearch() {
         searchText = ""
         debouncedSearchText = ""
+    }
+
+    func setUnfocusHandler(_ handler: @escaping () -> Void) {
+        unfocusHandler = handler
+    }
+
+    func unfocusSearch() {
+        unfocusHandler?()
     }
 }

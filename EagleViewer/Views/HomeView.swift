@@ -38,6 +38,7 @@ struct HomeView: View {
                 }
             }
         }
+        .searchDismissible()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
