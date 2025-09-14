@@ -583,7 +583,8 @@ struct MetadataImporter {
         
         // Use save for existing folders, insert for new folders
         if existingFolderIds.contains(folderId) {
-            try folder.save(db)
+            // keep user setting fields: sortType and sortAscending
+            try folder.update(db, columns: ["parentId", "name", "nameForSort", "modificationTime", "manualOrder"])
         } else {
             try folder.insert(db)
         }
