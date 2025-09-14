@@ -13,16 +13,31 @@
 		23F7D9812E5B7A4300B51BD0 /* Nuke in Frameworks */ = {isa = PBXBuildFile; productRef = 23F7D9802E5B7A4300B51BD0 /* Nuke */; };
 		23F7D9832E5B7A4300B51BD0 /* NukeUI in Frameworks */ = {isa = PBXBuildFile; productRef = 23F7D9822E5B7A4300B51BD0 /* NukeUI */; };
 		23F7D9852E5B7A4300B51BD0 /* NukeVideo in Frameworks */ = {isa = PBXBuildFile; productRef = 23F7D9842E5B7A4300B51BD0 /* NukeVideo */; };
+		23FE24C62E763AF500ACF1F0 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 23FE24C52E763AF500ACF1F0 /* InfoPlist.xcstrings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		23408CAA2E592EBD00617E88 /* EagleViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EagleViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		237FA0F02E6119D500CECD8F /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		23FE24C52E763AF500ACF1F0 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		23FE24C42E76335C00ACF1F0 /* Exceptions for "EagleViewer" folder in "EagleViewer" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 23408CA92E592EBD00617E88 /* EagleViewer */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		23408CAC2E592EBD00617E88 /* EagleViewer */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				23FE24C42E76335C00ACF1F0 /* Exceptions for "EagleViewer" folder in "EagleViewer" target */,
+			);
 			path = EagleViewer;
 			sourceTree = "<group>";
 		};
@@ -47,6 +62,7 @@
 		23408CA12E592EBD00617E88 = {
 			isa = PBXGroup;
 			children = (
+				23FE24C52E763AF500ACF1F0 /* InfoPlist.xcstrings */,
 				237FA0F02E6119D500CECD8F /* Localizable.xcstrings */,
 				23408CAC2E592EBD00617E88 /* EagleViewer */,
 				23408CAB2E592EBD00617E88 /* Products */,
@@ -136,6 +152,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				23FE24C62E763AF500ACF1F0 /* InfoPlist.xcstrings in Resources */,
 				237FA0F12E6119D500CECD8F /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -287,8 +304,10 @@
 				DEVELOPMENT_TEAM = 293FWB5XED;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EagleViewer/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Eagle Viewer";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Add image to the Photos app";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -321,8 +340,10 @@
 				DEVELOPMENT_TEAM = 293FWB5XED;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EagleViewer/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Eagle Viewer";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Add image to the Photos app";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
