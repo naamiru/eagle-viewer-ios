@@ -185,7 +185,14 @@ struct ImageDetailView: View {
                         }) {
                             Image(systemName: "chevron.down")
                         }
-                        .opacity(isNoUI ? 0 : 1)
+                    }
+
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        if let imageURL = getImageURL(for: selectedItem) {
+                            ShareLink(item: imageURL) {
+                                Image(systemName: "square.and.arrow.up")
+                            }
+                        }
                     }
                 }
             }
