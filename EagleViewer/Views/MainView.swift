@@ -15,6 +15,9 @@ struct MainView: View {
     @EnvironmentObject private var eventCenter: EventCenter
     @StateObject private var navigationManager = NavigationManager()
     @State private var libraryAccessTask: Task<Void, Error>?
+    @State private var isSearchPresented = false
+    @State private var searchText = ""
+    @FocusState private var isSearchFieldFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -33,7 +36,22 @@ struct MainView: View {
                         }
                     }
             }
+
             BottomBarView()
+        }
+        .overlay(alignment: .bottom) {
+            if isSearchPresented {
+                SearchBottomBarView(
+                    searchText: $searchText,
+                    isSearchFieldFocused: $isSearchFieldFocused,
+                    onCancel: {
+                        isSearchPresented = false
+                        searchText = ""
+                        isSearchFieldFocused = false
+                    }
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
         .ignoresSafeArea(edges: .horizontal)
         .environmentObject(navigationManager)
@@ -66,6 +84,19 @@ struct MainView: View {
                 eventCenter.post(.importProgressChanged)
             }
         }
+        .onReceive(eventCenter.publisher) { event in
+            if case .searchToggled = event {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isSearchPresented.toggle()
+                    if isSearchPresented {
+                        isSearchFieldFocused = true
+                    } else {
+                        searchText = ""
+                        isSearchFieldFocused = false
+                    }
+                }
+            }
+        }
     }
 
     private func startImportingForCurrentLibrary() async {
@@ -73,6 +104,51 @@ struct MainView: View {
             library: library,
             activeLibraryURL: libraryFolderManager.activeLibraryURL,
             dbWriter: repositories.dbWriter
+        )
+    }
+}
+
+struct SearchBottomBarView: View {
+    @Binding var searchText: String
+    @FocusState.Binding var isSearchFieldFocused: Bool
+    let onCancel: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+
+                TextField("Search", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .focused($isSearchFieldFocused)
+                    .submitLabel(.search)
+
+                if !searchText.isEmpty {
+                    Button(action: {
+                        searchText = ""
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding(12)
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(10)
+
+            Button("Cancel") {
+                onCancel()
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 12)
+        .background(Color(UIColor.systemBackground))
+        .overlay(
+            Rectangle()
+                .frame(height: 0.5)
+                .foregroundColor(Color(UIColor.separator)),
+            alignment: .top
         )
     }
 }

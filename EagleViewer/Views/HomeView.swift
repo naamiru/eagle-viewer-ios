@@ -50,6 +50,7 @@ struct HomeView: View {
             }
 
             ToolbarItemGroup(placement: .navigationBarTrailing) {
+                RefreshButton()
                 Button(action: {
                     showingSettings = true
                 }) {

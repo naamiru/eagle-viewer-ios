@@ -411,6 +411,9 @@
         }
       }
     },
+    "Search" : {
+
+    },
     "Select a folder ending with \".library\"" : {
       "localizations" : {
         "ja" : {
