@@ -43,9 +43,10 @@ struct SearchBottomBarView: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
-        .background(Color(UIColor.systemBackground))
+        .background(Color(UIColor.systemBackground).ignoresSafeArea(edges: .horizontal))
         .overlay(
             Rectangle()
+                .ignoresSafeArea(edges: .horizontal)
                 .frame(height: 0.5)
                 .foregroundColor(Color(UIColor.separator)),
             alignment: .top

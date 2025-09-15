@@ -48,6 +48,7 @@ struct CollectionView<T: CollectionQueryable>: View where T.Value == [Item], T.C
         ScrollView {
             ItemListRequestView(request: $request, placeholderType: searchManager.debouncedSearchText.isEmpty ? .default : .search)
         }
+        .ignoresSafeArea(edges: .horizontal)
         .searchDismissible()
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)

@@ -108,6 +108,7 @@ struct FolderDetailInnerRequestView: View {
                                 .padding(.horizontal, 20)
                         }
                         ItemListView(items: items, placeholderType: childFolders.isEmpty ? (searchManager.debouncedSearchText.isEmpty ? .default : .search) : .none)
+                            .ignoresSafeArea(edges: .horizontal)
                     }
                 }
             }

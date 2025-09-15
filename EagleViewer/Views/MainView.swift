@@ -45,7 +45,6 @@ struct MainView: View {
                     .animation(.easeInOut(duration: 0.25), value: searchManager.isSearchActive)
             }
         }
-        .ignoresSafeArea(edges: .horizontal)
         .environmentObject(navigationManager)
         .environmentObject(searchManager)
         .onChange(of: library, initial: true) { oldLibrary, newLibrary in
