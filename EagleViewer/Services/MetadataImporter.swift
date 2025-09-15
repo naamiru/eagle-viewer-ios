@@ -63,6 +63,8 @@ struct MetadataImporter {
         let duration: Double?
         let folders: [String]?
         let order: [String: String]?
+        let tags: [String]?
+        let annotation: String?
     }
     
     struct MTimeJSON: Decodable {
@@ -191,7 +193,7 @@ struct MetadataImporter {
                 }
                 
                 // Build Item instances from metadata
-                let batchItems: [(item: Item, metadata: ItemMetadataJSON)] = batchMetadata.map { itemId, metadata in
+                let batchItems: [(item: StoredItem, metadata: ItemMetadataJSON)] = batchMetadata.map { itemId, metadata in
                     let item = buildItem(libraryId: libraryId, itemId: itemId, metadata: metadata)
                     return (item: item, metadata: metadata)
                 }
@@ -389,9 +391,9 @@ struct MetadataImporter {
         libraryId: Int64,
         itemId: String,
         metadata: ItemMetadataJSON
-    ) -> Item {
+    ) -> StoredItem {
         let name = metadata.name ?? ""
-        return Item(
+        return StoredItem(
             libraryId: libraryId,
             itemId: itemId,
             name: name,
@@ -407,12 +409,14 @@ struct MetadataImporter {
             lastModified: metadata.lastModified ?? 0,
             noThumbnail: metadata.noThumbnail ?? false,
             star: metadata.star ?? 0,
-            duration: metadata.duration ?? 0
+            duration: metadata.duration ?? 0,
+            tags: metadata.tags ?? [],
+            annotation: metadata.annotation ?? ""
         )
     }
     
     private func copyItemImages(
-        item: Item,
+        item: StoredItem,
         libraryUrl: URL,
         localUrl: URL
     ) async throws {
@@ -452,7 +456,7 @@ struct MetadataImporter {
     
     private func processItem(
         db: Database,
-        item: Item,
+        item: StoredItem,
         metadata: ItemMetadataJSON,
         existingItemIds: Set<String> = []
     ) throws {
@@ -583,7 +587,8 @@ struct MetadataImporter {
         
         // Use save for existing folders, insert for new folders
         if existingFolderIds.contains(folderId) {
-            try folder.save(db)
+            // keep user setting fields: sortType and sortAscending
+            try folder.update(db, columns: ["parentId", "name", "nameForSort", "modificationTime", "manualOrder"])
         } else {
             try folder.insert(db)
         }

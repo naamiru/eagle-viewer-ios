@@ -14,6 +14,7 @@ struct MainView: View {
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
     @EnvironmentObject private var eventCenter: EventCenter
     @StateObject private var navigationManager = NavigationManager()
+    @StateObject private var searchManager = SearchManager()
     @State private var libraryAccessTask: Task<Void, Error>?
 
     var body: some View {
@@ -33,10 +34,19 @@ struct MainView: View {
                         }
                     }
             }
+
             BottomBarView()
         }
-        .ignoresSafeArea(edges: .horizontal)
+        .ignoresSafeArea(.keyboard)
+        .overlay(alignment: .bottom) {
+            if searchManager.isSearchActive {
+                SearchBottomBarView()
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(.easeInOut(duration: 0.25), value: searchManager.isSearchActive)
+            }
+        }
         .environmentObject(navigationManager)
+        .environmentObject(searchManager)
         .onChange(of: library, initial: true) { oldLibrary, newLibrary in
             if oldLibrary.id != newLibrary.id // library changed
                 || oldLibrary == newLibrary // inital call

@@ -341,6 +341,16 @@
         }
       }
     },
+    "Nothing Found" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "何も見つかりませんでした"
+          }
+        }
+      }
+    },
     "OK" : {
       "localizations" : {
         "ja" : {
@@ -407,6 +417,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ネットワークドライブをご利用の場合、有効にすることをおすすめします。"
+          }
+        }
+      }
+    },
+    "Search" : {
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "検索"
           }
         }
       }
