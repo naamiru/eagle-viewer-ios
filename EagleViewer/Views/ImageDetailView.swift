@@ -21,6 +21,7 @@ struct ImageDetailView: View {
     @State private var isThumbnailScrolling = false
     
     @State private var screenSize = CGSize(width: 100, height: 100)
+    @State private var scale: CGFloat = 1
     
     private let prefetcher = ImagePrefetcher()
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
@@ -66,6 +67,22 @@ struct ImageDetailView: View {
         }
     }
     
+    private func onChangeScale(_ value: CGFloat) {
+        scale = value
+    }
+    
+    private func dragCloseGesture() -> some Gesture {
+        DragGesture()
+            .onEnded { value in
+                guard scale == 1 else { return }
+
+                let w = abs(value.translation.width), h = value.translation.height
+                if h > 10, w < 20, w / h < 0.2 {
+                    dismiss(selectedItem)
+                }
+            }
+    }
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -77,10 +94,12 @@ struct ImageDetailView: View {
                         ForEach(items, id: \.itemId) { item in
                             ItemImageViewer(
                                 item: item,
+                                isSelected: item.itemId == mainScrollId,
                                 size: screenSize,
                                 isNoUI: $isNoUI,
                                 swipeDisabled: $swipeDisabled,
-                                dismiss: dismiss
+                                dismiss: dismiss,
+                                onChangeScale: onChangeScale
                             )
                             .containerRelativeFrame(.horizontal)
                             .id(item.itemId)
@@ -97,15 +116,16 @@ struct ImageDetailView: View {
                     // Force scroll position to update after view appears
                     mainScrollId = selectedItem.itemId
                 }
+                .simultaneousGesture(dragCloseGesture())
                 
                 if !isNoUI {
                     VStack {
                         Spacer()
                         ScrollView(.horizontal) {
                             LazyHStack(spacing: 3) {
+                                let selectedIndex = items.firstIndex(where: { $0.itemId == selectedItem.itemId })
                                 ForEach(Array(items.enumerated()), id: \.element.itemId) { index, item in
                                     let isSelected = !isThumbnailScrolling && item.itemId == selectedItem.itemId
-                                    let selectedIndex = items.firstIndex(where: { $0.itemId == selectedItem.itemId })
                                     let isBeforeSelected = selectedIndex != nil && !isThumbnailScrolling && index < selectedIndex!
                                     let isAfterSelected = selectedIndex != nil && !isThumbnailScrolling && index > selectedIndex!
                                     
@@ -236,10 +256,12 @@ struct ImageDetailView: View {
 
 struct ItemImageViewer: View {
     let item: Item
+    let isSelected: Bool
     let size: CGSize
     @Binding var isNoUI: Bool
     @Binding var swipeDisabled: Bool
     let dismiss: (Item) -> Void
+    let onChangeScale: (CGFloat) -> Void
 
     @State private var scale: CGFloat = 1
     @State private var lastScale: CGFloat = 1
@@ -265,7 +287,6 @@ struct ItemImageViewer: View {
                     }
                 }
                 .simultaneousGesture(magnifyGesture())
-                .simultaneousGesture(dragCloseGesture())
         }
         .scrollDisabled(scale == 1)
         .frame(
@@ -285,6 +306,15 @@ struct ItemImageViewer: View {
                         isNoUI = false
                     }
                 }
+            }
+            
+            if isSelected {
+                onChangeScale(newValue)
+            }
+        }
+        .onChange(of: isSelected) {
+            if isSelected {
+                onChangeScale(scale)
             }
         }
     }
@@ -328,18 +358,6 @@ struct ItemImageViewer: View {
                             isNoUI = false
                         }
                     }
-                }
-            }
-    }
-
-    private func dragCloseGesture() -> some Gesture {
-        DragGesture()
-            .onEnded { value in
-                guard scale == 1 else { return }
-
-                let w = abs(value.translation.width), h = value.translation.height
-                if h > 10, w < 20, w / h < 0.2 {
-                    dismiss(item)
                 }
             }
     }
