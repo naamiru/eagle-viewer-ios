@@ -8,14 +8,20 @@ An iOS app for viewing [Eagle](https://jp.eagle.cool/) image libraries on iPhone
 
 <table>
 <tr>
-<td width="50%">
+<td width="33%">
 
 ![Home View](docs/assets/readme/home.en.png)
 
 </td>
-<td width="50%">
+<td width="33%">
 
 ![Folder View](docs/assets/readme/folder.en.png)
+
+</td>
+
+<td width="33%">
+
+![Image View](docs/assets/readme/image.en.png)
 
 </td>
 </tr>
