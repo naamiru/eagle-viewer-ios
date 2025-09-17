@@ -34,6 +34,7 @@ struct SearchBottomBarView: View {
             }
             .padding(.horizontal)
             .frame(height: 44)
+            .contentShape(RoundedRectangle(cornerRadius: 22))
             .glassEffect(.regular)
 
             Button(action: {
