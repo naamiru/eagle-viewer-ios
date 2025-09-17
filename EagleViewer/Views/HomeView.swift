@@ -81,6 +81,7 @@ struct HomeView: View {
                 foldersRequest.searchText = text
             }
         }
+        .safeAreaPadding(.bottom, 52)
     }
 }
 

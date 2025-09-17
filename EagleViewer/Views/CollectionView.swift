@@ -63,6 +63,7 @@ struct CollectionView<T: CollectionQueryable>: View where T.Value == [Item], T.C
                 request.searchText = text
             }
         }
+        .safeAreaPadding(.bottom, 52)
     }
 }
 
