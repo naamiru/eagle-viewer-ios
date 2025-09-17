@@ -41,22 +41,20 @@ struct HomeView: View {
         .searchDismissible()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .principal) {
+            ToolbarItem(placement: .topBarLeading) {
                 Button(action: {
                     showingLibraries = true
                 }) {
                     HStack(spacing: 4) {
                         Text(library.name)
-                            .font(.headline)
-                            .foregroundColor(.primary)
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.caption)
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(.primary)
                     }
                 }
             }
 
-            ToolbarItemGroup(placement: .navigationBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
                 RefreshButton()
                 Button(action: {
                     showingSettings = true
@@ -83,6 +81,7 @@ struct HomeView: View {
                 foldersRequest.searchText = text
             }
         }
+        .safeAreaPadding(.bottom, 52)
     }
 }
 

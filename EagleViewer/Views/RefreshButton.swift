@@ -19,7 +19,6 @@ struct RefreshButton: View {
             (metadataImportManager.isImporting && metadataImportManager.importProgress == 0)
         {
             ProgressView()
-                .frame(maxWidth: .infinity)
         } else if metadataImportManager.isImporting {
             Menu {
                 Button("Stop Syncing", role: .destructive) {
@@ -40,7 +39,6 @@ struct RefreshButton: View {
                     Text(verbatim: "\(Int(metadataImportManager.importProgress * 100))")
                         .font(.system(size: 8, weight: .medium))
                 }
-                .frame(maxWidth: .infinity)
             }
         } else {
             Menu {
@@ -53,10 +51,11 @@ struct RefreshButton: View {
             } label: {
                 Image(systemName: "arrow.trianglehead.clockwise")
                     .foregroundColor(Color.primary)
-                    .frame(maxWidth: .infinity)
-            } primaryAction: {
-                startImporting(fullImport: false)
             }
+            // iOS 26 bug
+//            primaryAction: {
+//                startImporting(fullImport: false)
+//            }
         }
     }
 

@@ -78,17 +78,13 @@ struct FolderItemSortMenuInnerView: View {
             } label: {
                 Image(systemName: "arrow.up.arrow.down")
                     .foregroundColor(Color.primary)
-                    .background(Color.clear)
-                    .padding(.top, 12)
-                    .padding(.bottom, 8)
-                    .frame(maxWidth: .infinity)
-                    .contentShape(Rectangle())
+                    .frame(width: 30, height: 30)
             }
         } else {
             Button(action: {}) {
                 Image(systemName: "arrow.up.arrow.down")
                     .foregroundColor(Color.secondary)
-                    .frame(maxWidth: .infinity)
+                    .frame(width: 30, height: 30)
             }
             .disabled(true)
         }

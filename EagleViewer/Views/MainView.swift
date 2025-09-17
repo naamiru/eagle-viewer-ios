@@ -18,7 +18,7 @@ struct MainView: View {
     @State private var libraryAccessTask: Task<Void, Error>?
 
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack {
             NavigationStack(path: $navigationManager.path) {
                 HomeView()
                     .navigationDestination(for: NavigationDestination.self) { destination in
@@ -35,14 +35,15 @@ struct MainView: View {
                     }
             }
 
-            BottomBarView()
+            VStack {
+                Spacer()
+                BottomBarView()
+            }
         }
         .ignoresSafeArea(.keyboard)
         .overlay(alignment: .bottom) {
             if searchManager.isSearchActive {
                 SearchBottomBarView()
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(.easeInOut(duration: 0.25), value: searchManager.isSearchActive)
             }
         }
         .environmentObject(navigationManager)

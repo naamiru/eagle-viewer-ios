@@ -120,6 +120,7 @@ struct FolderDetailInnerRequestView: View {
                 childFoldersRequest.searchText = text
             }
         }
+        .safeAreaPadding(.bottom, 52)
     }
 }
 
