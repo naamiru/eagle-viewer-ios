@@ -8,26 +8,34 @@
 import SwiftUI
 
 struct BottomBarView: View {
+    @Namespace private var toolNamespace
+
     var body: some View {
-        Grid {
-            GridRow {
-                HomeButton()
-                SortMenu()
-                LayoutMenu()
-                SearchButton()
+        HStack {
+            HomeButton()
+
+            Spacer()
+
+            GlassEffectContainer {
+                HStack {
+                    SortMenu()
+                        .buttonStyle(.glass)
+                        .glassEffectUnion(id: "tools", namespace: toolNamespace)
+                    LayoutMenu()
+                        .buttonStyle(.glass)
+                        .glassEffectUnion(id: "tools", namespace: toolNamespace)
+                }
+                .contentShape(RoundedRectangle(cornerRadius: 25))
             }
+
+            Spacer()
+
+            SearchButton()
+                .frame(width: 44, height: 44)
+                .contentShape(.circle)
+                .glassEffect(.regular.interactive())
         }
-        .background(
-            Color(UIColor.systemBackground)
-                .ignoresSafeArea(edges: .horizontal)
-        )
-        .overlay(
-            Rectangle()
-                .ignoresSafeArea(edges: .horizontal)
-                .frame(height: 0.5)
-                .foregroundColor(Color(UIColor.separator)),
-            alignment: .top
-        )
+        .padding(.horizontal)
     }
 }
 
@@ -39,9 +47,12 @@ struct HomeButton: View {
             navigationManager.popToRoot()
         }) {
             Image(systemName: "house")
-                .foregroundColor(navigationManager.path.count == 0 ? Color.accentColor : Color.primary)
-                .frame(maxWidth: .infinity)
+                .foregroundColor(navigationManager.path.count == 0 ? Color.secondary : Color.primary)
         }
+        .disabled(navigationManager.path.count == 0)
+        .frame(width: 44, height: 44)
+        .contentShape(.circle)
+        .glassEffect(navigationManager.path.count == 0 ? .regular : .regular.interactive())
     }
 }
 
@@ -84,11 +95,7 @@ struct SortMenu: View {
             } label: {
                 Image(systemName: "arrow.up.arrow.down")
                     .foregroundColor(Color.primary)
-                    .background(Color.clear)
-                    .padding(.top, 12)
-                    .padding(.bottom, 8)
-                    .frame(maxWidth: .infinity)
-                    .contentShape(Rectangle())
+                    .frame(width: 30, height: 30)
             }
         case nil:
             // in HomeView
@@ -117,16 +124,13 @@ struct SortMenu: View {
             } label: {
                 Image(systemName: "arrow.up.arrow.down")
                     .foregroundColor(Color.primary)
-                    .background(Color.clear)
-                    .padding(.top, 12)
-                    .padding(.bottom, 8)
-                    .frame(maxWidth: .infinity)
-                    .contentShape(Rectangle())
+                    .frame(width: 30, height: 30)
             }
         default:
             Button(action: {}) {
                 Image(systemName: "arrow.up.arrow.down")
                     .foregroundColor(Color.secondary)
+                    .frame(width: 30, height: 30)
             }
             .disabled(true)
         }
@@ -144,7 +148,6 @@ struct SearchButton: View {
         }) {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(Color.primary)
-                .frame(maxWidth: .infinity)
         }
     }
 }
@@ -171,10 +174,7 @@ struct LayoutMenu: View {
         } label: {
             Image(systemName: "square.grid.2x2")
                 .foregroundColor(Color.primary)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-                .frame(maxWidth: .infinity)
-                .contentShape(Rectangle())
+                .frame(width: 30, height: 30)
         }
     }
 }
