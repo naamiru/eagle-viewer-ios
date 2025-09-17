@@ -32,29 +32,30 @@ struct SearchBottomBarView: View {
                     }
                 }
             }
-            .padding(8)
-            .background(Color(UIColor.secondarySystemBackground))
-            .cornerRadius(10)
+            .padding(.horizontal)
+            .frame(height: 44)
+            .glassEffect(.regular)
 
-            Button("Cancel") {
+            Button(action: {
                 isSearchFieldFocused = false
+                searchManager.clearSearch()
                 searchManager.hideSearch()
+            }) {
+                Image(systemName: "xmark")
+                    .foregroundColor(Color.primary)
             }
+            .frame(width: 44, height: 44)
+            .contentShape(.circle)
+            .glassEffect(.regular.interactive())
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
-        .background(Color(UIColor.systemBackground).ignoresSafeArea(edges: .horizontal))
-        .overlay(
-            Rectangle()
-                .ignoresSafeArea(edges: .horizontal)
-                .frame(height: 0.5)
-                .foregroundColor(Color(UIColor.separator)),
-            alignment: .top
-        )
         .onAppear {
             isSearchFieldFocused = true
-            searchManager.setUnfocusHandler {
-                isSearchFieldFocused = false
+        }
+        .onChange(of: isSearchFieldFocused) {
+            if !isSearchFieldFocused {
+                searchManager.hideSearch()
             }
         }
     }

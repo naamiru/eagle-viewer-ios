@@ -44,8 +44,6 @@ struct MainView: View {
         .overlay(alignment: .bottom) {
             if searchManager.isSearchActive {
                 SearchBottomBarView()
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(.easeInOut(duration: 0.25), value: searchManager.isSearchActive)
             }
         }
         .environmentObject(navigationManager)

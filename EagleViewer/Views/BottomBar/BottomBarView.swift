@@ -31,9 +31,6 @@ struct BottomBarView: View {
             Spacer()
 
             SearchButton()
-                .frame(width: 44, height: 44)
-                .contentShape(.circle)
-                .glassEffect(.regular.interactive())
         }
         .padding(.horizontal)
     }
@@ -148,7 +145,22 @@ struct SearchButton: View {
         }) {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(Color.primary)
+            if !searchManager.searchText.isEmpty {
+                Text(searchManager.searchText)
+                    .font(.caption)
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+            }
         }
+        .if(searchManager.searchText.isEmpty) { view in
+            view.frame(width: 44, height: 44)
+        }
+        .if(!searchManager.searchText.isEmpty) { view in
+            view.frame(height: 44)
+                .padding(.horizontal)
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 22))
+        .glassEffect(.regular.interactive())
     }
 }
 

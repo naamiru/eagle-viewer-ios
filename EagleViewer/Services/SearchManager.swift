@@ -5,8 +5,8 @@
 //  Created on 2025/09/14
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 class SearchManager: ObservableObject {
     @Published var searchText = ""
@@ -14,7 +14,6 @@ class SearchManager: ObservableObject {
     @Published var isSearchActive = false
 
     private var currentPageHandler: ((String) -> Void)?
-    private var unfocusHandler: (() -> Void)?
     private var searchCancellable: AnyCancellable?
 
     init() {
@@ -40,22 +39,10 @@ class SearchManager: ObservableObject {
 
     func hideSearch() {
         isSearchActive = false
-        clearSearch()
     }
 
     func clearSearch() {
         searchText = ""
         debouncedSearchText = ""
-    }
-
-    func setUnfocusHandler(_ handler: @escaping () -> Void) {
-        unfocusHandler = handler
-    }
-
-    func unfocusSearch() {
-        unfocusHandler?()
-        if searchText.isEmpty {
-            hideSearch()
-        }
     }
 }

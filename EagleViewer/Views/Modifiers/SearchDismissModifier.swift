@@ -14,14 +14,14 @@ struct SearchDismissModifier: ViewModifier {
         content
             .onTapGesture {
                 if searchManager.isSearchActive {
-                    searchManager.unfocusSearch()
+                    searchManager.hideSearch()
                 }
             }
             .simultaneousGesture(
                 DragGesture()
                     .onChanged { _ in
                         if searchManager.isSearchActive {
-                            searchManager.unfocusSearch()
+                            searchManager.hideSearch()
                         }
                     }
             )
