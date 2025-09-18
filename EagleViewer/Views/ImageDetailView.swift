@@ -67,10 +67,6 @@ struct ImageDetailView: View {
         }
     }
     
-    private func onChangeScale(_ value: CGFloat) {
-        scale = value
-    }
-    
     private func dragCloseGesture() -> some Gesture {
         DragGesture()
             .onEnded { value in
@@ -83,6 +79,10 @@ struct ImageDetailView: View {
             }
     }
     
+    private func onScaleChanged(_ scale: CGFloat) {
+        self.scale = scale
+    }
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -92,23 +92,20 @@ struct ImageDetailView: View {
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 0) {
                         ForEach(items, id: \.itemId) { item in
-                            ItemImageViewer(
-                                item: item,
-                                isSelected: item.itemId == mainScrollId,
-                                size: screenSize,
-                                isNoUI: $isNoUI,
-                                swipeDisabled: $swipeDisabled,
-                                dismiss: dismiss,
-                                onChangeScale: onChangeScale
-                            )
-                            .containerRelativeFrame(.horizontal)
-                            .id(item.itemId)
+                            ItemImageView(item: item)
+                                .zoomable(
+                                    isSelected: item.itemId == mainScrollId,
+                                    isNoUI: $isNoUI,
+                                    onScaleChanged: onScaleChanged
+                                )
+                                .containerRelativeFrame(.horizontal)
+                                .id(item.itemId)
                         }
                     }
                     .scrollTargetLayout()
                 }
                 .ignoresSafeArea()
-                .scrollDisabled(swipeDisabled)
+                .scrollDisabled(scale != 1)
                 .scrollIndicators(.hidden)
                 .scrollTargetBehavior(.paging)
                 .scrollPosition(id: $mainScrollId)
@@ -251,114 +248,5 @@ struct ImageDetailView: View {
                     }
             }.ignoresSafeArea()
         )
-    }
-}
-
-struct ItemImageViewer: View {
-    let item: Item
-    let isSelected: Bool
-    let size: CGSize
-    @Binding var isNoUI: Bool
-    @Binding var swipeDisabled: Bool
-    let dismiss: (Item) -> Void
-    let onChangeScale: (CGFloat) -> Void
-
-    @State private var scale: CGFloat = 1
-    @State private var lastScale: CGFloat = 1
-    @State private var wasNoUIBeforeZoom: Bool = false
-
-    var body: some View {
-        ScrollView([.horizontal, .vertical], showsIndicators: false) {
-            let frame = getImageFrame()
-            ItemImageView(item: item)
-                .frame(
-                    width: frame.width,
-                    height: frame.height
-                )
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isNoUI.toggle()
-                    }
-                }
-                .onTapGesture(count: 2) {
-                    withAnimation {
-                        scale = scale <= 1 ? 2 : 1
-                        lastScale = 1
-                    }
-                }
-                .simultaneousGesture(magnifyGesture())
-        }
-        .scrollDisabled(scale == 1)
-        .frame(
-            width: size.width,
-            height: size.height
-        )
-        .ignoresSafeArea()
-        .onChange(of: scale) { oldValue, newValue in
-            withAnimation(.easeInOut(duration: 0.2)) {
-                if oldValue == 1 && newValue > 1 {
-                    // Starting to zoom in from normal scale
-                    wasNoUIBeforeZoom = isNoUI
-                    isNoUI = true
-                } else if newValue == 1 && oldValue > 1 {
-                    // Zoom reset to normal scale
-                    if !wasNoUIBeforeZoom {
-                        isNoUI = false
-                    }
-                }
-            }
-            
-            if isSelected {
-                onChangeScale(newValue)
-            }
-        }
-        .onChange(of: isSelected) {
-            if isSelected {
-                onChangeScale(scale)
-            }
-        }
-    }
-
-    private func getImageFrame() -> CGSize {
-        let imageAspect = CGFloat(item.width) / CGFloat(item.height)
-        let screenAspect = size.width / size.height
-        if imageAspect >= screenAspect {
-            // wide image
-            return CGSize(width: size.width * scale, height: size.width * scale / imageAspect)
-        } else {
-            // tall image
-            return CGSize(width: size.height * scale * imageAspect, height: size.height * scale)
-        }
-    }
-
-    private func magnifyGesture() -> some Gesture {
-        MagnifyGesture()
-            .onChanged { value in
-                // avoid changing item during pinch
-                swipeDisabled = true
-
-                let delta = value.magnification / lastScale
-                // To minimize jittering
-                if abs(1 - delta) > 0.01 {
-                    scale *= delta
-                }
-                lastScale = value.magnification
-            }
-            .onEnded { _ in
-                swipeDisabled = false
-
-                lastScale = 1
-                if scale < 1 {
-                    withAnimation {
-                        scale = 1
-                    }
-                    // Handle zoom reset via pinch
-                    if !wasNoUIBeforeZoom {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            isNoUI = false
-                        }
-                    }
-                }
-            }
     }
 }
