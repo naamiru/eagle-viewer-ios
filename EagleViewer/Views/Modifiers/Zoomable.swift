@@ -52,11 +52,11 @@ struct ZoomableModifier: ViewModifier {
 
                 if isZooming && !isNoUI {
                     wasNoUIBeforeZoom = false
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(.easeInOut(duration: 0.25)) {
                         isNoUI = true
                     }
                 } else if !isZooming && isNoUI && !wasNoUIBeforeZoom {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(.easeInOut(duration: 0.25)) {
                         isNoUI = false
                     }
                 }
@@ -95,7 +95,7 @@ struct ZoomableModifier: ViewModifier {
                         .identity
                     }
 
-                withAnimation(.linear(duration: 0.15)) {
+                withAnimation(.easeInOut(duration: 0.25)) {
                     transform = newTransform
                     lastTransform = newTransform
                 }
@@ -168,7 +168,7 @@ extension View {
             outOfBoundsColor
             self.modifier(ZoomableModifier(
                 minZoomScale: 1,
-                doubleTapZoomScale: 3,
+                doubleTapZoomScale: 2,
                 isSelected: isSelected,
                 isNoUI: isNoUI,
                 onScaleChanged: onScaleChanged
