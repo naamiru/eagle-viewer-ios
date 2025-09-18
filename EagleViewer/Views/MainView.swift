@@ -15,9 +15,7 @@ struct MainView: View {
     @EnvironmentObject private var eventCenter: EventCenter
     @StateObject private var navigationManager = NavigationManager()
     @StateObject private var searchManager = SearchManager()
-    @StateObject private var imageViewerManager = ImageViewerManager(namespace: Namespace().wrappedValue)
-    @Namespace private var imageViewerNamespace
-
+    @StateObject private var imageViewerManager = ImageViewerManager()
     @State private var libraryAccessTask: Task<Void, Error>?
 
     var body: some View {
@@ -102,9 +100,6 @@ struct MainView: View {
             if metadataImportManager.isImporting {
                 eventCenter.post(.importProgressChanged)
             }
-        }
-        .onChange(of: imageViewerNamespace, initial: true) {
-            imageViewerManager.namespace = imageViewerNamespace
         }
     }
 

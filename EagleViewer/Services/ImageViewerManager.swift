@@ -14,12 +14,6 @@ class ImageViewerManager: ObservableObject {
     var items: [Item]?
     var dismiss: ((Item) -> Void)?
 
-    @Published var namespace: Namespace.ID
-
-    init(namespace: Namespace.ID) {
-        self.namespace = namespace
-    }
-
     func show(item: Item, items: [Item], onDismiss: @escaping (Item) -> Void) {
         self.item = item
         self.items = items
