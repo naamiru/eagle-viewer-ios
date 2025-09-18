@@ -34,7 +34,9 @@ class SearchManager: ObservableObject {
     }
 
     func showSearch() {
-        isSearchActive = true
+        withAnimation {
+            isSearchActive = true
+        }
     }
 
     func hideSearch() {

@@ -35,13 +35,10 @@ struct MainView: View {
                         }
                     }
             }
-            .zIndex(0)
-
-            VStack {
-                Spacer()
+            .safeAreaInset(edge: .bottom) {
                 BottomBarView()
             }
-            .zIndex(1)
+            .zIndex(0)
 
             if imageViewerManager.isPresented,
                let item = imageViewerManager.item,
@@ -60,13 +57,8 @@ struct MainView: View {
                     }
                 }
                 .transition(.opacity)
-                .zIndex(2)
-            }
-        }
-        .ignoresSafeArea(.keyboard)
-        .overlay(alignment: .bottom) {
-            if searchManager.isSearchActive {
-                SearchBottomBarView()
+                .ignoresSafeArea(.keyboard)
+                .zIndex(1)
             }
         }
         .environmentObject(navigationManager)
