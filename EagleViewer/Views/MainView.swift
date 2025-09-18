@@ -15,6 +15,9 @@ struct MainView: View {
     @EnvironmentObject private var eventCenter: EventCenter
     @StateObject private var navigationManager = NavigationManager()
     @StateObject private var searchManager = SearchManager()
+    @StateObject private var imageViewerManager = ImageViewerManager(namespace: Namespace().wrappedValue)
+    @Namespace private var imageViewerNamespace
+
     @State private var libraryAccessTask: Task<Void, Error>?
 
     var body: some View {
@@ -34,10 +37,32 @@ struct MainView: View {
                         }
                     }
             }
+            .zIndex(0)
 
             VStack {
                 Spacer()
                 BottomBarView()
+            }
+            .zIndex(1)
+
+            if imageViewerManager.isPresented,
+               let item = imageViewerManager.item,
+               let items = imageViewerManager.items,
+               let dismiss = imageViewerManager.dismiss
+            {
+                Group {
+                    if ItemVideoView.isVideo(item: item) {
+                        ItemVideoView(item: item)
+                    } else {
+                        ImageDetailView(
+                            item: item,
+                            items: items.filter { !ItemVideoView.isVideo(item: $0) },
+                            dismiss: dismiss
+                        )
+                    }
+                }
+                .transition(.opacity)
+                .zIndex(2)
             }
         }
         .ignoresSafeArea(.keyboard)
@@ -48,6 +73,7 @@ struct MainView: View {
         }
         .environmentObject(navigationManager)
         .environmentObject(searchManager)
+        .environmentObject(imageViewerManager)
         .onChange(of: library, initial: true) { oldLibrary, newLibrary in
             if oldLibrary.id != newLibrary.id // library changed
                 || oldLibrary == newLibrary // inital call
@@ -76,6 +102,9 @@ struct MainView: View {
             if metadataImportManager.isImporting {
                 eventCenter.post(.importProgressChanged)
             }
+        }
+        .onChange(of: imageViewerNamespace, initial: true) {
+            imageViewerManager.namespace = imageViewerNamespace
         }
     }
 
