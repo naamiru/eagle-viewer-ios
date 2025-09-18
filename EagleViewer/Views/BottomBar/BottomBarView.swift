@@ -7,32 +7,43 @@
 
 import SwiftUI
 
-struct BottomBarView: View {
-    @Namespace private var toolNamespace
+struct BottomBarView: View, KeyboardReadable {
+    @State private var isKeyboardVisible = false
+    @Namespace private var namespace
+
+    @EnvironmentObject private var searchManager: SearchManager
 
     var body: some View {
         HStack {
-            HomeButton()
+            if !searchManager.isSearchActive {
+                HomeButton()
 
-            Spacer()
+                Spacer()
 
-            GlassEffectContainer {
-                HStack {
-                    SortMenu()
-                        .buttonStyle(.glass)
-                        .glassEffectUnion(id: "tools", namespace: toolNamespace)
-                    LayoutMenu()
-                        .buttonStyle(.glass)
-                        .glassEffectUnion(id: "tools", namespace: toolNamespace)
+                GlassEffectContainer {
+                    HStack {
+                        SortMenu()
+                            .buttonStyle(.glass)
+                            .glassEffectUnion(id: "tools", namespace: namespace)
+                        LayoutMenu()
+                            .buttonStyle(.glass)
+                            .glassEffectUnion(id: "tools", namespace: namespace)
+                    }
+                    .contentShape(RoundedRectangle(cornerRadius: 25))
                 }
-                .contentShape(RoundedRectangle(cornerRadius: 25))
+
+                Spacer()
+
+                SearchButton()
+            } else {
+                SearchBar()
             }
-
-            Spacer()
-
-            SearchButton()
         }
         .padding(.horizontal)
+        .padding(.bottom, isKeyboardVisible ? 8 : 0)
+        .onReceive(keyboardPublisher) { visible in
+            isKeyboardVisible = visible
+        }
     }
 }
 
@@ -134,36 +145,6 @@ struct SortMenu: View {
     }
 }
 
-struct SearchButton: View {
-    @EnvironmentObject private var searchManager: SearchManager
-
-    var body: some View {
-        Button(action: {
-            withAnimation(.easeInOut(duration: 0.25)) {
-                searchManager.showSearch()
-            }
-        }) {
-            Image(systemName: "magnifyingglass")
-                .foregroundColor(Color.primary)
-            if !searchManager.searchText.isEmpty {
-                Text(searchManager.searchText)
-                    .font(.caption)
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
-            }
-        }
-        .if(searchManager.searchText.isEmpty) { view in
-            view.frame(width: 44, height: 44)
-        }
-        .if(!searchManager.searchText.isEmpty) { view in
-            view.frame(height: 44)
-                .padding(.horizontal)
-        }
-        .contentShape(RoundedRectangle(cornerRadius: 22))
-        .glassEffect(.regular.interactive())
-    }
-}
-
 struct LayoutMenu: View {
     @EnvironmentObject private var settingsManager: SettingsManager
     @Environment(\.isPortrait) private var isPortrait
@@ -187,6 +168,86 @@ struct LayoutMenu: View {
             Image(systemName: "square.grid.2x2")
                 .foregroundColor(Color.primary)
                 .frame(width: 30, height: 30)
+        }
+    }
+}
+
+struct SearchButton: View {
+    @EnvironmentObject private var searchManager: SearchManager
+
+    var body: some View {
+        Button(action: {
+            searchManager.showSearch()
+        }) {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(Color.primary)
+            if !searchManager.searchText.isEmpty {
+                Text(searchManager.searchText)
+                    .font(.caption)
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+            }
+        }
+        .if(searchManager.searchText.isEmpty) { view in
+            view.frame(width: 44, height: 44)
+        }
+        .if(!searchManager.searchText.isEmpty) { view in
+            view.frame(height: 44)
+                .padding(.horizontal)
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 22))
+        .glassEffect(.regular.interactive())
+    }
+}
+
+struct SearchBar: View {
+    @EnvironmentObject private var searchManager: SearchManager
+    @FocusState private var isSearchFieldFocused: Bool
+
+    var body: some View {
+        Group {
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+
+                TextField("Search", text: $searchManager.searchText)
+                    .textFieldStyle(.plain)
+                    .textInputAutocapitalization(.never)
+                    .focused($isSearchFieldFocused)
+                    .submitLabel(.search)
+
+                if !searchManager.searchText.isEmpty {
+                    Button(action: {
+                        searchManager.clearSearch()
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .frame(height: 44)
+            .contentShape(RoundedRectangle(cornerRadius: 22))
+            .glassEffect(.regular)
+
+            Button(action: {
+                isSearchFieldFocused = false
+                searchManager.clearSearch()
+            }) {
+                Image(systemName: "xmark")
+                    .foregroundColor(Color.primary)
+            }
+            .frame(width: 44, height: 44)
+            .contentShape(.circle)
+            .glassEffect(.regular.interactive())
+        }
+        .onAppear {
+            isSearchFieldFocused = true
+        }
+        .onChange(of: isSearchFieldFocused) {
+            if !isSearchFieldFocused {
+                searchManager.hideSearch()
+            }
         }
     }
 }
