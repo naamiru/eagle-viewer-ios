@@ -231,6 +231,7 @@ struct ImageDetailView: View {
                 .transition(.opacity)
             }
         }
+        .statusBar(hidden: isNoUI)
         .onAppear {
             prefetchAdjacentImages(for: selectedItem)
         }
