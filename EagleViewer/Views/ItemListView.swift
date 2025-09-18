@@ -13,8 +13,8 @@ struct ItemListView: View {
     let items: [Item]
     let placeholderType: PlaceholderType
 
-    @State private var selectedItem: Item?
-    @State private var scrollToItem: Item?
+    @EnvironmentObject var imageViewerManager: ImageViewerManager
+    @EnvironmentObject private var searchManager: SearchManager
 
     init(items: [Item], placeholderType: PlaceholderType = .none) {
         self.items = items
@@ -42,30 +42,13 @@ struct ItemListView: View {
                             .contentShape(Rectangle())
                             .id(item.itemId)
                             .onTapGesture {
-                                selectedItem = item
+                                searchManager.hideSearch()
+                                imageViewerManager.show(item: item, items: items, onDismiss: { selectedItem in
+                                    if item != selectedItem {
+                                        proxy.scrollTo(selectedItem.itemId, anchor: .center)
+                                    }
+                                })
                             }
-                    }
-                }
-                .fullScreenCover(item: $selectedItem) { item in
-                    if ItemVideoView.isVideo(item: item) {
-                        ItemVideoView(item: item)
-                    } else {
-                        ImageDetailView(
-                            item: item,
-                            items: items.filter { !ItemVideoView.isVideo(item: $0) },
-                            dismiss: { item in
-                                if item != selectedItem {
-                                    scrollToItem = item
-                                }
-                                selectedItem = nil
-                            }
-                        )
-                    }
-                }
-                .onChange(of: scrollToItem) {
-                    if let item = scrollToItem {
-                        proxy.scrollTo(item.itemId, anchor: .center)
-                        scrollToItem = nil
                     }
                 }
             }
