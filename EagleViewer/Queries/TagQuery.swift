@@ -105,9 +105,10 @@ class TagQuery {
             arguments += ["%\(escapedKeyword)%"]
         }
 
+        // remove tags they are already in search text
         let searchText = [itemSearchText, tagSearchText].filter { !$0.isEmpty }.joined(separator: " ")
         if !searchText.isEmpty {
-            sql += " AND NOT (INSTR(?, tag) > 0)"
+            sql += " AND NOT (INSTR(LOWER(?), LOWER(tag)) > 0)"
             arguments += [searchText]
         }
 

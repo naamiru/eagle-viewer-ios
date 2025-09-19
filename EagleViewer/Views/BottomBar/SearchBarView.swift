@@ -181,14 +181,7 @@ struct SearchSuggestInnerView: View {
     }
 
     private func onTagSelected(tag: String) {
-        let replaced = if searchManager.searchText.firstRange(of: /\s/) != nil {
-            searchManager.searchText.replacing(/(\s)\S*$/) { match in
-                match.1 + tag
-            }
-        } else {
-            tag
-        }
-        searchManager.searchText = replaced + " "
+        searchManager.searchText = mergeTextAndTag(searchManager.searchText, with: tag) + " "
     }
 
     private func onSearchHistorySelected(searchHistory: SearchHistory) {
@@ -227,6 +220,62 @@ struct SearchSuggestInnerView: View {
 
         result += normalString(remainingString)
         return result
+    }
+
+    /// Merges search text and tag with case-insensitive overlap detection,
+    /// adopting the casing from the tag.
+    ///
+    /// - Parameters:
+    ///   - str: The base string.
+    ///   - tag: The string to append. Its casing will be used for the final merged part.
+    /// - Returns: The new string merged according to the rules.
+    func mergeTextAndTag(_ searchText: String, with tag: String) -> String {
+        // if search text have only input tag, replace all to tag
+        let trimmedText = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedText.contains(/\s/) {
+            return tag
+        }
+
+        // remove input tag
+        let str = trimmedText.replacing(/\s+\S+$/, with: "")
+
+        // --- Basic Edge Cases ---
+        if tag.isEmpty {
+            return str
+        }
+
+        // --- Rule 1: Case-Insensitive Overlap Detection ---
+        // Loop backwards from the longest possible overlap length down to 1.
+        for length in (1 ... min(str.count, tag.count)).reversed() {
+            // Get the suffix and prefix for comparison.
+            let strSuffix = str.suffix(length)
+            let tagPrefix = tag.prefix(length)
+
+            // Compare the lowercased versions for a case-insensitive match.
+            if strSuffix.lowercased() == tagPrefix.lowercased() {
+                // An overlap was found, so check the positional conditions.
+                let overlapStartIndex = str.index(str.endIndex, offsetBy: -length)
+
+                // Condition A: Does the overlap start at the beginning of the string?
+                let isAtStart = (overlapStartIndex == str.startIndex)
+
+                // Condition B: Is the character before the overlap a whitespace?
+                let isAfterWhitespace = (!isAtStart && str[str.index(before: overlapStartIndex)].isWhitespace)
+
+                if isAtStart || isAfterWhitespace {
+                    // --- Rule 2: Adopt Casing from tag ---
+                    // Get the part of str before the overlap.
+                    let baseString = str.prefix(upTo: overlapStartIndex)
+
+                    // Append the ENTIRE tag to the base string to ensure correct casing.
+                    return String(baseString) + tag
+                }
+            }
+        }
+
+        // --- Fallback: Adding a Space ---
+        // This part is reached if no valid overlap was found.
+        return str + " " + tag
     }
 }
 
