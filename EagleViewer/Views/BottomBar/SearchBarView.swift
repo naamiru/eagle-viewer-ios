@@ -146,12 +146,12 @@ struct SearchSuggestInnerView: View {
             } else {
                 if !tagCounts.isEmpty {
                     VStack(spacing: 0) {
+                        let (_, searched) = TagCountsRequest.splitSearchText(searchManager.debouncedSearchText)
                         ForEach(tagCounts.enumerated(), id: \.element.tag) { index, tagCount in
                             HStack {
                                 Image(systemName: "tag")
                                     .font(.caption)
-                                Text(tagCount.tag)
-                                    .foregroundColor(.secondary)
+                                Text(highlightString(str: tagCount.tag, searched: searched))
                                     .lineLimit(1)
                                     .frame(maxWidth: 200)
                                     .fixedSize()
@@ -204,6 +204,30 @@ struct SearchSuggestInnerView: View {
             }
         }
     }
+
+    private func highlightString(str: String, searched: String) -> AttributedString {
+        func normalString(_ str: Substring) -> AttributedString {
+            var attrStr = AttributedString(str)
+            attrStr.foregroundColor = .secondary
+            return attrStr
+        }
+
+        func highlightedString(_ str: Substring) -> AttributedString {
+            return AttributedString(str)
+        }
+
+        var remainingString = str[...]
+        var result = AttributedString()
+
+        while let range = remainingString.range(of: searched, options: .caseInsensitive) {
+            result += normalString(remainingString[..<range.lowerBound])
+            result += highlightedString(remainingString[range])
+            remainingString = remainingString[range.upperBound...]
+        }
+
+        result += normalString(remainingString)
+        return result
+    }
 }
 
 struct TagCountsRequest: ValueObservationQueryable {
@@ -216,7 +240,7 @@ struct TagCountsRequest: ValueObservationQueryable {
     static var defaultValue: [TagCount] { [] }
 
     func fetch(_ db: Database) throws -> [TagCount] {
-        let (itemSearchText, tagSearchText) = splitSearchText()
+        let (itemSearchText, tagSearchText) = TagCountsRequest.splitSearchText(searchText)
         if tagSearchText.isEmpty {
             return []
         }
@@ -249,7 +273,7 @@ struct TagCountsRequest: ValueObservationQueryable {
         }
     }
 
-    private func splitSearchText() -> (String, String) {
+    static func splitSearchText(_ searchText: String) -> (String, String) {
         guard let lastSpaceIndex = searchText.lastIndex(where: { $0.isWhitespace }) else {
             return ("", searchText)
         }
