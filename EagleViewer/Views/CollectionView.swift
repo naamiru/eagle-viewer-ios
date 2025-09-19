@@ -82,7 +82,7 @@ struct AllCollectionRequest: CollectionQueryable {
     static var defaultValue: [Item] { [] }
 
     func fetch(_ db: Database) throws -> [Item] {
-        try CollectionQuery.allItems(libraryId: libraryId, sortOption: sortOption, searchText: searchText)
+        try ItemQuery.allItems(libraryId: libraryId, sortOption: sortOption, searchText: searchText)
             .fetchAll(db)
     }
 }
@@ -95,7 +95,7 @@ struct UncategorizedCollectionRequest: CollectionQueryable {
     static var defaultValue: [Item] { [] }
 
     func fetch(_ db: Database) throws -> [Item] {
-        try CollectionQuery.uncategorizedItems(libraryId: libraryId, sortOption: sortOption, searchText: searchText)
+        try ItemQuery.uncategorizedItems(libraryId: libraryId, sortOption: sortOption, searchText: searchText)
             .fetchAll(db)
     }
 }
@@ -108,7 +108,7 @@ struct RandomCollectionRequest: CollectionQueryable {
     static var defaultValue: [Item] { [] }
 
     func fetch(_ db: Database) throws -> [Item] {
-        try CollectionQuery.randomItems(libraryId: libraryId, searchText: searchText)
+        try ItemQuery.randomItems(libraryId: libraryId, searchText: searchText)
             .fetchAll(db)
     }
 }

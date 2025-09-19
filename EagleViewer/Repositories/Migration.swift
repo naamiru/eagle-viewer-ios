@@ -7,13 +7,13 @@
 
 import GRDB
 
-struct Migration {
+enum Migration {
     static func getMigrator() -> DatabaseMigrator {
         var migrator = DatabaseMigrator()
         
 #if DEBUG
         // Speed up development by nuking the database when migrations change
-        migrator.eraseDatabaseOnSchemaChange = true
+        // migrator.eraseDatabaseOnSchemaChange = true
 #endif
         
         migrator.registerMigration("initial") { db in
@@ -98,6 +98,23 @@ struct Migration {
 
             // Reset all import timestamps to force re-import of items with new fields
             try db.execute(sql: "UPDATE library SET lastImportedItemMTime = 0")
+        }
+        
+        migrator.registerMigration("create-search-history") { db in
+            try db.create(table: "searchHistory") { t in
+                t.primaryKey {
+                    t.belongsTo("library", onDelete: .cascade)
+                    t.column("searchHistoryType", .text)
+                    t.column("searchText", .text)
+                }
+                t.column("searchedAt", .datetime).notNull()
+            }
+            
+            try db.create(
+                index: "idx_searchHistory_searchedAt",
+                on: "searchHistory",
+                columns: ["libraryId", "searchHistoryType", "searchedAt"]
+            )
         }
 
         return migrator

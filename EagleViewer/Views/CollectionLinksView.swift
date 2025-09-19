@@ -85,7 +85,7 @@ struct AllCoverItemRequest: ValueObservationQueryable {
     static var defaultValue: Item? { nil }
 
     func fetch(_ db: Database) throws -> Item? {
-        try CollectionQuery.allItems(libraryId: libraryId, sortOption: sortOption)
+        try ItemQuery.allItems(libraryId: libraryId, sortOption: sortOption)
             .fetchOne(db)
     }
 }
@@ -97,7 +97,7 @@ struct UncategorizedCoverItemRequest: ValueObservationQueryable {
     static var defaultValue: Item? { nil }
 
     func fetch(_ db: Database) throws -> Item? {
-        try CollectionQuery.uncategorizedItems(libraryId: libraryId, sortOption: sortOption)
+        try ItemQuery.uncategorizedItems(libraryId: libraryId, sortOption: sortOption)
             .fetchOne(db)
     }
 }
