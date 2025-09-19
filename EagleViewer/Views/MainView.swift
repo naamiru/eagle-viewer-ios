@@ -64,6 +64,20 @@ struct MainView: View {
         .environmentObject(navigationManager)
         .environmentObject(searchManager)
         .environmentObject(imageViewerManager)
+        .onChange(of: searchManager.isSearchActive) {
+            // Save search history when search is disabled and there's search text
+            if !searchManager.isSearchActive && !searchManager.searchText.isEmpty {
+                Task {
+                    let searchHistory = SearchHistory(
+                        libraryId: library.id,
+                        searchHistoryType: navigationManager.path.isEmpty ? .folder : .item,
+                        searchText: searchManager.searchText,
+                        searchedAt: Date()
+                    )
+                    try? await repositories.searchHistory.save(searchHistory)
+                }
+            }
+        }
         .onChange(of: library, initial: true) { oldLibrary, newLibrary in
             if oldLibrary.id != newLibrary.id // library changed
                 || oldLibrary == newLibrary // inital call
