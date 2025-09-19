@@ -105,6 +105,12 @@ class TagQuery {
             arguments += ["%\(escapedKeyword)%"]
         }
 
+        let searchText = [itemSearchText, tagSearchText].filter { !$0.isEmpty }.joined(separator: " ")
+        if !searchText.isEmpty {
+            sql += " AND NOT (INSTR(?, tag) > 0)"
+            arguments += [searchText]
+        }
+
         sql += """
             GROUP BY tags.value
             HAVING count > 0
