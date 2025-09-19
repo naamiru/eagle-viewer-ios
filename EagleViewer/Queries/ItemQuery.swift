@@ -7,7 +7,7 @@
 
 import GRDB
 
-class CollectionQuery {
+class ItemQuery {
     static var itemColumns: [SQLSelectable] {
         [Column("libraryId"), Column("itemId"), Column("name"), Column("ext"),
          Column("height"), Column("width"), Column("noThumbnail"), Column("duration")]

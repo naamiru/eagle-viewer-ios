@@ -40,13 +40,13 @@ class FolderQuery {
     }
 
     static func folderItems(folder: Folder, globalSortOption: GlobalSortOption, searchText: String = "") -> QueryInterfaceRequest<Item> {
-        CollectionQuery.searchItems(libraryId: folder.libraryId, searchText: searchText)
+        ItemQuery.searchItems(libraryId: folder.libraryId, searchText: searchText)
             .joining(required: StoredItem.folderItems
                 .filter(Column("folderId") == folder.folderId))
             .order(sql: SortQuery.folderItemOrderSQL(
                 by: folder.sortOption(globalSortOption: globalSortOption), global: globalSortOption
             ))
-            .select(CollectionQuery.itemColumns, as: Item.self)
+            .select(ItemQuery.itemColumns, as: Item.self)
     }
 
     static func folderItemsWithDescendantFallback(folder: Folder, globalSortOption: GlobalSortOption) -> SQLRequest<Item> {
