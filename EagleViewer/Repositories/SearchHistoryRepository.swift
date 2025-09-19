@@ -22,6 +22,25 @@ struct SearchHistoryRepository {
             history.searchedAt = Date()
 
             try history.save(db, onConflict: .replace)
+
+            let count = try SearchHistory
+                .filter(Column("libraryId") == searchHistory.libraryId)
+                .filter(Column("searchHistoryType") == searchHistory.searchHistoryType.rawValue)
+                .fetchCount(db)
+
+            if count > 100 {
+                let oldestToDelete = count - 100
+                let oldestHistories = try SearchHistory
+                    .filter(Column("libraryId") == searchHistory.libraryId)
+                    .filter(Column("searchHistoryType") == searchHistory.searchHistoryType.rawValue)
+                    .order(Column("searchedAt").asc)
+                    .limit(oldestToDelete)
+                    .fetchAll(db)
+
+                for oldHistory in oldestHistories {
+                    try oldHistory.delete(db)
+                }
+            }
         }
     }
 
