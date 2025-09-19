@@ -66,73 +66,121 @@ struct SearchBarView: View {
 }
 
 struct SearchSuggestView: View {
-    @State private var request = TagCountsRequest(libraryId: 0, destination: nil, searchText: "")
+    @State private var tagCountsequest = TagCountsRequest(libraryId: 0, destination: nil, searchText: "")
+    @State private var searchHistoriesRequest = SearchHistoriesRequest(libraryId: 0, searchHistoryType: .folder)
 
     @Environment(\.library) private var library
     @EnvironmentObject private var searchManager: SearchManager
     @EnvironmentObject private var navigationManager: NavigationManager
 
     var body: some View {
-        SearchSuggestInnerView(tagCountsRequest: $request)
-            .onChange(of: library.id, initial: true) {
-                request.libraryId = library.id
-            }
-            .onChange(of: navigationManager.path.last, initial: true) {
-                request.destination = navigationManager.path.last
-            }
-            .onChange(of: searchManager.debouncedSearchText, initial: true) {
-                request.searchText = searchManager.debouncedSearchText
-            }
+        SearchSuggestInnerView(
+            tagCountsRequest: $tagCountsequest,
+            searchHistoriesRequest: $searchHistoriesRequest
+        )
+        .onChange(of: library.id, initial: true) {
+            tagCountsequest.libraryId = library.id
+            searchHistoriesRequest.libraryId = library.id
+        }
+        .onChange(of: navigationManager.path.last, initial: true) {
+            tagCountsequest.destination = navigationManager.path.last
+            searchHistoriesRequest.searchHistoryType = navigationManager.path.isEmpty ? .folder : .item
+        }
+        .onChange(of: searchManager.debouncedSearchText, initial: true) {
+            tagCountsequest.searchText = searchManager.debouncedSearchText
+        }
     }
 }
 
 struct SearchSuggestInnerView: View {
     @Query<TagCountsRequest> private var tagCounts: [TagCount]
+    @Query<SearchHistoriesRequest> private var searchHistories: [SearchHistory]
 
     @EnvironmentObject private var searchManager: SearchManager
+    @Environment(\.repositories) private var repositories
 
-    init(tagCountsRequest: Binding<TagCountsRequest>) {
+    init(tagCountsRequest: Binding<TagCountsRequest>, searchHistoriesRequest: Binding<SearchHistoriesRequest>) {
         _tagCounts = Query(tagCountsRequest)
+        _searchHistories = Query(searchHistoriesRequest)
     }
 
     var body: some View {
         HStack(spacing: 0) {
-            if !tagCounts.isEmpty {
-                VStack(spacing: 0) {
-                    ForEach(tagCounts.enumerated(), id: \.element.tag) { index, tagCount in
-                        HStack {
-                            Image(systemName: "tag")
-                                .font(.caption)
-                            Text(tagCount.tag)
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-                                .frame(maxWidth: 200)
-                                .fixedSize()
-                            Spacer()
-                            Text(String(tagCount.count))
-                                .foregroundColor(.secondary)
+            if searchManager.searchText.isEmpty {
+                if !searchHistories.isEmpty {
+                    VStack(spacing: 0) {
+                        ForEach(searchHistories.enumerated(), id: \.element.searchText) { index, searchHistory in
+                            HStack {
+                                Image(systemName: "clock")
+                                    .font(.caption)
+                                Text(searchHistory.searchText)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                                    .frame(maxWidth: 200)
+                                    .fixedSize()
+                                Spacer()
+                                Button(action: {
+                                    Task {
+                                        try? await repositories.searchHistory.deleteSearchHistory(searchHistory)
+                                    }
+                                }) {
+                                    Image(systemName: "xmark")
+                                        .foregroundColor(Color.secondary.opacity(0.5))
+                                }
                                 .padding(.leading, 12)
-                        }
-                        .padding(.horizontal)
-                        .if(index == 0) { view in view.padding(.top) }
-                        .if(index != 0) { view in view.padding(.top, 6) }
-                        .if(index == tagCounts.count - 1) { view in view.padding(.bottom) }
-                        .if(index != tagCounts.count - 1) { view in view.padding(.bottom, 6) }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            onTagTapped(tag: tagCount.tag)
+                            }
+                            .padding(.horizontal)
+                            .if(index == 0) { view in view.padding(.top) }
+                            .if(index != 0) { view in view.padding(.top, 6) }
+                            .if(index == searchHistories.count - 1) { view in view.padding(.bottom) }
+                            .if(index != searchHistories.count - 1) { view in view.padding(.bottom, 6) }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                onSearchHistorySelected(searchHistory: searchHistory)
+                            }
                         }
                     }
+                    .fixedSize(horizontal: true, vertical: false)
+                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
                 }
-                .fixedSize(horizontal: true, vertical: false)
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
+            } else {
+                if !tagCounts.isEmpty {
+                    VStack(spacing: 0) {
+                        ForEach(tagCounts.enumerated(), id: \.element.tag) { index, tagCount in
+                            HStack {
+                                Image(systemName: "tag")
+                                    .font(.caption)
+                                Text(tagCount.tag)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                                    .frame(maxWidth: 200)
+                                    .fixedSize()
+                                Spacer()
+                                Text(String(tagCount.count))
+                                    .foregroundColor(.secondary)
+                                    .padding(.leading, 12)
+                            }
+                            .padding(.horizontal)
+                            .if(index == 0) { view in view.padding(.top) }
+                            .if(index != 0) { view in view.padding(.top, 6) }
+                            .if(index == tagCounts.count - 1) { view in view.padding(.bottom) }
+                            .if(index != tagCounts.count - 1) { view in view.padding(.bottom, 6) }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                onTagSelected(tag: tagCount.tag)
+                            }
+                        }
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
+                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
+                }
             }
 
             Spacer()
         }
     }
 
-    private func onTagTapped(tag: String) {
+    private func onTagSelected(tag: String) {
         let replaced = if searchManager.searchText.firstRange(of: /\s/) != nil {
             searchManager.searchText.replacing(/(\s)\S*$/) { match in
                 match.1 + tag
@@ -141,6 +189,20 @@ struct SearchSuggestInnerView: View {
             tag
         }
         searchManager.searchText = replaced + " "
+    }
+
+    private func onSearchHistorySelected(searchHistory: SearchHistory) {
+        searchManager.searchText = searchHistory.searchText
+        searchManager.hideSearch()
+    }
+
+    private func deleteSearchHistories(at offsets: IndexSet) {
+        Task {
+            for index in offsets {
+                let searchHistory = searchHistories[index]
+                try? await repositories.searchHistory.deleteSearchHistory(searchHistory)
+            }
+        }
     }
 }
 
@@ -196,5 +258,23 @@ struct TagCountsRequest: ValueObservationQueryable {
             String(searchText[..<lastSpaceIndex]).trimmingCharacters(in: .whitespacesAndNewlines),
             String(searchText[searchText.index(after: lastSpaceIndex)...]).trimmingCharacters(in: .whitespacesAndNewlines)
         )
+    }
+}
+
+struct SearchHistoriesRequest: ValueObservationQueryable {
+    var libraryId: Int64
+    var searchHistoryType: SearchHistoryType
+
+    static let queryableOptions = QueryableOptions.async
+
+    static var defaultValue: [SearchHistory] { [] }
+
+    func fetch(_ db: Database) throws -> [SearchHistory] {
+        return try SearchHistory
+            .filter(Column("libraryId") == libraryId)
+            .filter(Column("searchHistoryType") == searchHistoryType.rawValue)
+            .order(Column("searchedAt").desc)
+            .limit(4)
+            .fetchAll(db)
     }
 }

@@ -24,4 +24,10 @@ struct SearchHistoryRepository {
             try history.save(db, onConflict: .replace)
         }
     }
+
+    func deleteSearchHistory(_ searchHistory: SearchHistory) async throws {
+        _ = try await dbWriter.write { db in
+            try searchHistory.delete(db)
+        }
+    }
 }

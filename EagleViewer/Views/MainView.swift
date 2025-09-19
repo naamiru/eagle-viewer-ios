@@ -66,15 +66,33 @@ struct MainView: View {
         .environmentObject(imageViewerManager)
         .onChange(of: searchManager.isSearchActive) {
             // Save search history when search is disabled and there's search text
-            if !searchManager.isSearchActive && !searchManager.searchText.isEmpty {
+            let searchText = searchManager.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !searchManager.isSearchActive && !searchText.isEmpty {
                 Task {
                     let searchHistory = SearchHistory(
                         libraryId: library.id,
                         searchHistoryType: navigationManager.path.isEmpty ? .folder : .item,
-                        searchText: searchManager.searchText,
+                        searchText: searchText,
                         searchedAt: Date()
                     )
                     try? await repositories.searchHistory.save(searchHistory)
+                }
+            }
+        }
+        .onChange(of: navigationManager.path) { oldPath, _ in
+            // Save search history when leave home view
+            if oldPath.isEmpty {
+                let searchText = searchManager.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !searchText.isEmpty {
+                    Task {
+                        let searchHistory = SearchHistory(
+                            libraryId: library.id,
+                            searchHistoryType: .folder,
+                            searchText: searchText,
+                            searchedAt: Date()
+                        )
+                        try? await repositories.searchHistory.save(searchHistory)
+                    }
                 }
             }
         }
