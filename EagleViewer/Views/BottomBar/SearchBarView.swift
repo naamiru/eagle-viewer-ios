@@ -181,7 +181,10 @@ struct SearchSuggestInnerView: View {
     }
 
     private func onTagSelected(tag: String) {
-        searchManager.searchText = mergeTextAndTag(searchManager.searchText, with: tag) + " "
+        searchManager.searchText = combineSearchText(
+            searchText: searchManager.searchText,
+            tag: tag
+        ) + " "
     }
 
     private func onSearchHistorySelected(searchHistory: SearchHistory) {
@@ -222,60 +225,49 @@ struct SearchSuggestInnerView: View {
         return result
     }
 
-    /// Merges search text and tag with case-insensitive overlap detection,
-    /// adopting the casing from the tag.
-    ///
-    /// - Parameters:
-    ///   - str: The base string.
-    ///   - tag: The string to append. Its casing will be used for the final merged part.
-    /// - Returns: The new string merged according to the rules.
-    func mergeTextAndTag(_ searchText: String, with tag: String) -> String {
-        // if search text have only input tag, replace all to tag
-        let trimmedText = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedText.contains(/\s/) {
+    /**
+     * Combines a search text and a selected tag.
+     *
+     * It first trims leading and trailing whitespace from the search text.
+     * Assuming suggestions are based on partial matches, it then finds the longest match
+     * between the end of the search text and any part of the tag (case-insensitively) to combine them.
+     *
+     * - Parameters:
+     * - searchText: The current text in the search field.
+     * - tag: The tag selected by the user.
+     * - Returns: The combined new search text.
+     */
+    func combineSearchText(searchText: String, tag: String) -> String {
+        // 1. Trim leading and trailing whitespace (spaces, tabs, newlines, etc.) from the search text.
+        let trimmedSearchText = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // 2. If the trimmed result is empty, return the tag directly.
+        if trimmedSearchText.isEmpty {
             return tag
         }
 
-        // remove input tag
-        let str = trimmedText.replacing(/\s+\S+$/, with: "")
+        // 3. Loop from the beginning of the trimmed search text to find the longest possible match.
+        for index in trimmedSearchText.indices {
+            // 4. Check if the current position is at a word boundary (start of string or after whitespace).
+            //    This improves performance by avoiding unnecessary 'contains' checks inside words.
+            let isAtStart = (index == trimmedSearchText.startIndex)
+            let isPrecededByWhitespace = !isAtStart && trimmedSearchText[trimmedSearchText.index(before: index)].isWhitespace
 
-        // --- Basic Edge Cases ---
-        if tag.isEmpty {
-            return str
-        }
+            if isAtStart || isPrecededByWhitespace {
+                // 5. If it's a word boundary, get the substring from the current position to the end.
+                let suffix = String(trimmedSearchText[index...])
 
-        // --- Rule 1: Case-Insensitive Overlap Detection ---
-        // Loop backwards from the longest possible overlap length down to 1.
-        for length in (1 ... min(str.count, tag.count)).reversed() {
-            // Get the suffix and prefix for comparison.
-            let strSuffix = str.suffix(length)
-            let tagPrefix = tag.prefix(length)
-
-            // Compare the lowercased versions for a case-insensitive match.
-            if strSuffix.lowercased() == tagPrefix.lowercased() {
-                // An overlap was found, so check the positional conditions.
-                let overlapStartIndex = str.index(str.endIndex, offsetBy: -length)
-
-                // Condition A: Does the overlap start at the beginning of the string?
-                let isAtStart = (overlapStartIndex == str.startIndex)
-
-                // Condition B: Is the character before the overlap a whitespace?
-                let isAfterWhitespace = (!isAtStart && str[str.index(before: overlapStartIndex)].isWhitespace)
-
-                if isAtStart || isAfterWhitespace {
-                    // --- Rule 2: Adopt Casing from tag ---
-                    // Get the part of str before the overlap.
-                    let baseString = str.prefix(upTo: overlapStartIndex)
-
-                    // Append the ENTIRE tag to the base string to ensure correct casing.
-                    return String(baseString) + tag
+                // 6. Perform a case-insensitive check to see if the tag contains the suffix.
+                if tag.range(of: suffix, options: .caseInsensitive) != nil {
+                    // The first match found is guaranteed to be the longest one because we are looping from the start.
+                    let baseText = String(trimmedSearchText[..<index])
+                    return baseText + tag
                 }
             }
         }
 
-        // --- Fallback: Adding a Space ---
-        // This part is reached if no valid overlap was found.
-        return str + " " + tag
+        // 7. If no overlapping part is found, combine the trimmed search text and the tag with a space.
+        return trimmedSearchText + " " + tag
     }
 }
 
