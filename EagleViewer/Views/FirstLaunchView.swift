@@ -34,7 +34,7 @@ struct FirstLaunchInfoView: View {
     let libraryName: String
     let bookmarkData: Data
 
-    @State private var useLocalStorage: Bool = false
+    @State private var useLocalStorage: Bool = true
     @State private var isLoading = false
 
     @Environment(\.repositories) private var repositories

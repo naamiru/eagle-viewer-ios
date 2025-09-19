@@ -16,7 +16,7 @@ struct LibraryAddView: View {
 
     @State private var libraryName: String?
     @State private var libraryBookmarkData: Data?
-    @State private var useLocalStorage = false
+    @State private var useLocalStorage = true
 
     @State private var isLoading = false
     @State private var path = NavigationPath()
