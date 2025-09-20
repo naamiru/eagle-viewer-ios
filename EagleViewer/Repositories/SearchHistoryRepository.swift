@@ -10,6 +10,8 @@ import GRDB
 import GRDBQuery
 
 struct SearchHistoryRepository {
+    static let maxCount: Int = 200
+
     private let dbWriter: any DatabaseWriter
 
     init(_ dbWriter: any DatabaseWriter) {
@@ -28,8 +30,8 @@ struct SearchHistoryRepository {
                 .filter(Column("searchHistoryType") == searchHistory.searchHistoryType.rawValue)
                 .fetchCount(db)
 
-            if count > 100 {
-                let oldestToDelete = count - 100
+            if count > Self.maxCount {
+                let oldestToDelete = count - Self.maxCount
                 let oldestHistories = try SearchHistory
                     .filter(Column("libraryId") == searchHistory.libraryId)
                     .filter(Column("searchHistoryType") == searchHistory.searchHistoryType.rawValue)

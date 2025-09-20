@@ -67,7 +67,7 @@ struct SearchBarView: View {
 
 struct SearchSuggestView: View {
     @State private var tagCountsequest = TagCountsRequest(libraryId: 0, destination: nil, searchText: "")
-    @State private var searchHistoriesRequest = SearchHistoriesRequest(libraryId: 0, searchHistoryType: .folder)
+    @State private var searchHistoriesRequest = SearchHistoriesRequest(libraryId: 0, searchHistoryType: .folder, searchText: "")
 
     @Environment(\.library) private var library
     @EnvironmentObject private var searchManager: SearchManager
@@ -88,6 +88,7 @@ struct SearchSuggestView: View {
         }
         .onChange(of: searchManager.debouncedSearchText, initial: true) {
             tagCountsequest.searchText = searchManager.debouncedSearchText
+            searchHistoriesRequest.searchText = searchManager.debouncedSearchText
         }
     }
 }
@@ -99,81 +100,96 @@ struct SearchSuggestInnerView: View {
     @EnvironmentObject private var searchManager: SearchManager
     @Environment(\.repositories) private var repositories
 
+    let maxCount = 4
+
     init(tagCountsRequest: Binding<TagCountsRequest>, searchHistoriesRequest: Binding<SearchHistoriesRequest>) {
         _tagCounts = Query(tagCountsRequest)
         _searchHistories = Query(searchHistoriesRequest)
     }
 
+    var filteredTagCounts: [TagCount] {
+        let count = maxCount - searchHistories.count
+
+        if count <= 0 {
+            return []
+        }
+
+        let filtered = tagCounts.filter { tagCount in
+            !searchHistories.contains { $0.searchText == tagCount.tag }
+        }
+
+        if filtered.count <= count {
+            return filtered
+        }
+
+        return [TagCount](filtered[..<count])
+    }
+
     var body: some View {
         HStack(spacing: 0) {
-            if searchManager.searchText.isEmpty {
-                if !searchHistories.isEmpty {
-                    VStack(spacing: 0) {
-                        ForEach(searchHistories.enumerated(), id: \.element.searchText) { index, searchHistory in
-                            HStack {
-                                Image(systemName: "clock")
-                                    .font(.caption)
-                                Text(searchHistory.searchText)
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-                                    .frame(maxWidth: 200)
-                                    .fixedSize()
-                                Spacer()
-                                Button(action: {
-                                    Task {
-                                        try? await repositories.searchHistory.deleteSearchHistory(searchHistory)
-                                    }
-                                }) {
-                                    Image(systemName: "xmark")
-                                        .foregroundColor(Color.secondary.opacity(0.5))
+            let tagCounts = filteredTagCounts
+            if !searchHistories.isEmpty || !tagCounts.isEmpty {
+                VStack(spacing: 0) {
+                    let (_, searched) = TagCountsRequest.splitSearchText(searchManager.searchText)
+
+                    ForEach(searchHistories.enumerated(), id: \.element.searchText) { index, searchHistory in
+                        let isFirst = index == 0
+                        let isLast = index == maxCount - 1 || (index == searchHistories.count - 1 && tagCounts.isEmpty)
+                        HStack {
+                            Image(systemName: "clock")
+                                .font(.caption)
+                            Text(highlightString(str: searchHistory.searchText, searched: searched))
+                                .lineLimit(1)
+                            Spacer()
+                            Button(action: {
+                                Task {
+                                    try? await repositories.searchHistory.deleteSearchHistory(searchHistory)
                                 }
+                            }) {
+                                Image(systemName: "xmark")
+                                    .foregroundColor(Color.secondary.opacity(0.5))
+                            }
+                            .padding(.leading, 12)
+                        }
+                        .padding(.horizontal)
+                        .if(isFirst) { view in view.padding(.top) }
+                        .if(!isFirst) { view in view.padding(.top, 6) }
+                        .if(isLast) { view in view.padding(.bottom) }
+                        .if(!isLast) { view in view.padding(.bottom, 6) }
+                        .frame(maxWidth: 250)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            onSearchHistorySelected(searchHistory: searchHistory)
+                        }
+                    }
+
+                    ForEach(tagCounts.enumerated(), id: \.element.tag) { index, tagCount in
+                        let isFirst = index == 0 && searchHistories.isEmpty
+                        let isLast = index == tagCounts.count - 1
+                        HStack {
+                            Image(systemName: "tag")
+                                .font(.caption)
+                            Text(highlightString(str: tagCount.tag, searched: searched))
+                                .lineLimit(1)
+                            Spacer()
+                            Text(String(tagCount.count))
+                                .foregroundColor(.secondary)
                                 .padding(.leading, 12)
-                            }
-                            .padding(.horizontal)
-                            .if(index == 0) { view in view.padding(.top) }
-                            .if(index != 0) { view in view.padding(.top, 6) }
-                            .if(index == searchHistories.count - 1) { view in view.padding(.bottom) }
-                            .if(index != searchHistories.count - 1) { view in view.padding(.bottom, 6) }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                onSearchHistorySelected(searchHistory: searchHistory)
-                            }
+                        }
+                        .padding(.horizontal)
+                        .if(isFirst) { view in view.padding(.top) }
+                        .if(!isFirst) { view in view.padding(.top, 6) }
+                        .if(isLast) { view in view.padding(.bottom) }
+                        .if(!isLast) { view in view.padding(.bottom, 6) }
+                        .frame(maxWidth: 250)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            onTagSelected(tag: tagCount.tag)
                         }
                     }
-                    .fixedSize(horizontal: true, vertical: false)
-                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
                 }
-            } else {
-                if !tagCounts.isEmpty {
-                    VStack(spacing: 0) {
-                        let (_, searched) = TagCountsRequest.splitSearchText(searchManager.debouncedSearchText)
-                        ForEach(tagCounts.enumerated(), id: \.element.tag) { index, tagCount in
-                            HStack {
-                                Image(systemName: "tag")
-                                    .font(.caption)
-                                Text(highlightString(str: tagCount.tag, searched: searched))
-                                    .lineLimit(1)
-                                    .frame(maxWidth: 200)
-                                    .fixedSize()
-                                Spacer()
-                                Text(String(tagCount.count))
-                                    .foregroundColor(.secondary)
-                                    .padding(.leading, 12)
-                            }
-                            .padding(.horizontal)
-                            .if(index == 0) { view in view.padding(.top) }
-                            .if(index != 0) { view in view.padding(.top, 6) }
-                            .if(index == tagCounts.count - 1) { view in view.padding(.bottom) }
-                            .if(index != tagCounts.count - 1) { view in view.padding(.bottom, 6) }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                onTagSelected(tag: tagCount.tag)
-                            }
-                        }
-                    }
-                    .fixedSize(horizontal: true, vertical: false)
-                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
-                }
+                .fixedSize(horizontal: true, vertical: false)
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
             }
 
             Spacer()
@@ -188,8 +204,7 @@ struct SearchSuggestInnerView: View {
     }
 
     private func onSearchHistorySelected(searchHistory: SearchHistory) {
-        searchManager.searchText = searchHistory.searchText
-        searchManager.hideSearch()
+        searchManager.searchText = searchHistory.searchText + " "
     }
 
     private func deleteSearchHistories(at offsets: IndexSet) {
@@ -329,15 +344,28 @@ struct TagCountsRequest: ValueObservationQueryable {
 struct SearchHistoriesRequest: ValueObservationQueryable {
     var libraryId: Int64
     var searchHistoryType: SearchHistoryType
+    var searchText: String
 
     static let queryableOptions = QueryableOptions.async
 
     static var defaultValue: [SearchHistory] { [] }
 
     func fetch(_ db: Database) throws -> [SearchHistory] {
-        return try SearchHistory
+        var query = SearchHistory
             .filter(Column("libraryId") == libraryId)
             .filter(Column("searchHistoryType") == searchHistoryType.rawValue)
+
+        let trimmedSearchText = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedSearchText.isEmpty {
+            let escapedSearchText = ItemQuery.escapeLike(trimmedSearchText)
+            query = query.filter(Column("searchText").like("%\(escapedSearchText)%", escape: "\\"))
+
+            query = query.filter(
+                sql: "NOT (INSTR(LOWER(?), LOWER(searchText)) > 0)",
+                arguments: [trimmedSearchText]
+            )
+        }
+        return try query
             .order(Column("searchedAt").desc)
             .limit(4)
             .fetchAll(db)

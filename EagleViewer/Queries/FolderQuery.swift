@@ -16,10 +16,7 @@ class FolderQuery {
             let keywords = trimmedSearch.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
             for keyword in keywords {
                 // Escape special characters for SQL LIKE
-                let escapedKeyword = keyword
-                    .replacingOccurrences(of: "\\", with: "\\\\")
-                    .replacingOccurrences(of: "%", with: "\\%")
-                    .replacingOccurrences(of: "_", with: "\\_")
+                let escapedKeyword = ItemQuery.escapeLike(keyword)
                 query = query.filter(sql: "name LIKE ? ESCAPE '\\'", arguments: ["%\(escapedKeyword)%"])
             }
         }
