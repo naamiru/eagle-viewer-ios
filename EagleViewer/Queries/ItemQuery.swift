@@ -55,10 +55,7 @@ class ItemQuery {
         let keywords = trimmedSearch.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
         for keyword in keywords {
             // Escape special characters for SQL LIKE
-            let escapedKeyword = keyword
-                .replacingOccurrences(of: "\\", with: "\\\\")
-                .replacingOccurrences(of: "%", with: "\\%")
-                .replacingOccurrences(of: "_", with: "\\_")
+            let escapedKeyword = escapeLike(keyword)
 
             // Search across name, annotation, and tags
             let nameCondition = "name LIKE ? ESCAPE '\\'"
@@ -74,5 +71,11 @@ class ItemQuery {
         }
 
         return filters
+    }
+
+    static func escapeLike(_ string: String) -> String {
+        string.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "%", with: "\\%")
+            .replacingOccurrences(of: "_", with: "\\_")
     }
 }

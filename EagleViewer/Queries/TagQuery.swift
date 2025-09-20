@@ -97,10 +97,7 @@ class TagQuery {
         }
 
         if !tagSearchText.isEmpty {
-            let escapedKeyword = tagSearchText
-                .replacingOccurrences(of: "\\", with: "\\\\")
-                .replacingOccurrences(of: "%", with: "\\%")
-                .replacingOccurrences(of: "_", with: "\\_")
+            let escapedKeyword = ItemQuery.escapeLike(tagSearchText)
             sql += " AND (tag LIKE ? ESCAPE '\\')"
             arguments += ["%\(escapedKeyword)%"]
         }

@@ -67,7 +67,7 @@ struct SearchBarView: View {
 
 struct SearchSuggestView: View {
     @State private var tagCountsequest = TagCountsRequest(libraryId: 0, destination: nil, searchText: "")
-    @State private var searchHistoriesRequest = SearchHistoriesRequest(libraryId: 0, searchHistoryType: .folder)
+    @State private var searchHistoriesRequest = SearchHistoriesRequest(libraryId: 0, searchHistoryType: .folder, searchText: "")
 
     @Environment(\.library) private var library
     @EnvironmentObject private var searchManager: SearchManager
@@ -88,6 +88,7 @@ struct SearchSuggestView: View {
         }
         .onChange(of: searchManager.debouncedSearchText, initial: true) {
             tagCountsequest.searchText = searchManager.debouncedSearchText
+            searchHistoriesRequest.searchText = searchManager.debouncedSearchText
         }
     }
 }
@@ -99,81 +100,96 @@ struct SearchSuggestInnerView: View {
     @EnvironmentObject private var searchManager: SearchManager
     @Environment(\.repositories) private var repositories
 
+    let maxCount = 4
+
     init(tagCountsRequest: Binding<TagCountsRequest>, searchHistoriesRequest: Binding<SearchHistoriesRequest>) {
         _tagCounts = Query(tagCountsRequest)
         _searchHistories = Query(searchHistoriesRequest)
     }
 
+    var filteredTagCounts: [TagCount] {
+        let count = maxCount - searchHistories.count
+
+        if count <= 0 {
+            return []
+        }
+
+        let filtered = tagCounts.filter { tagCount in
+            !searchHistories.contains { $0.searchText == tagCount.tag }
+        }
+
+        if filtered.count <= count {
+            return filtered
+        }
+
+        return [TagCount](filtered[..<count])
+    }
+
     var body: some View {
         HStack(spacing: 0) {
-            if searchManager.searchText.isEmpty {
-                if !searchHistories.isEmpty {
-                    VStack(spacing: 0) {
-                        ForEach(searchHistories.enumerated(), id: \.element.searchText) { index, searchHistory in
-                            HStack {
-                                Image(systemName: "clock")
-                                    .font(.caption)
-                                Text(searchHistory.searchText)
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-                                    .frame(maxWidth: 200)
-                                    .fixedSize()
-                                Spacer()
-                                Button(action: {
-                                    Task {
-                                        try? await repositories.searchHistory.deleteSearchHistory(searchHistory)
-                                    }
-                                }) {
-                                    Image(systemName: "xmark")
-                                        .foregroundColor(Color.secondary.opacity(0.5))
+            let tagCounts = filteredTagCounts
+            if !searchHistories.isEmpty || !tagCounts.isEmpty {
+                VStack(spacing: 0) {
+                    let (_, searched) = TagCountsRequest.splitSearchText(searchManager.searchText)
+
+                    ForEach(searchHistories.enumerated(), id: \.element.searchText) { index, searchHistory in
+                        let isFirst = index == 0
+                        let isLast = index == maxCount - 1 || (index == searchHistories.count - 1 && tagCounts.isEmpty)
+                        HStack {
+                            Image(systemName: "clock")
+                                .font(.caption)
+                            Text(highlightString(str: searchHistory.searchText, searched: searched))
+                                .lineLimit(1)
+                            Spacer()
+                            Button(action: {
+                                Task {
+                                    try? await repositories.searchHistory.deleteSearchHistory(searchHistory)
                                 }
+                            }) {
+                                Image(systemName: "xmark")
+                                    .foregroundColor(Color.secondary.opacity(0.5))
+                            }
+                            .padding(.leading, 12)
+                        }
+                        .padding(.horizontal)
+                        .if(isFirst) { view in view.padding(.top) }
+                        .if(!isFirst) { view in view.padding(.top, 6) }
+                        .if(isLast) { view in view.padding(.bottom) }
+                        .if(!isLast) { view in view.padding(.bottom, 6) }
+                        .frame(maxWidth: 250)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            onSearchHistorySelected(searchHistory: searchHistory)
+                        }
+                    }
+
+                    ForEach(tagCounts.enumerated(), id: \.element.tag) { index, tagCount in
+                        let isFirst = index == 0 && searchHistories.isEmpty
+                        let isLast = index == tagCounts.count - 1
+                        HStack {
+                            Image(systemName: "tag")
+                                .font(.caption)
+                            Text(highlightString(str: tagCount.tag, searched: searched))
+                                .lineLimit(1)
+                            Spacer()
+                            Text(String(tagCount.count))
+                                .foregroundColor(.secondary)
                                 .padding(.leading, 12)
-                            }
-                            .padding(.horizontal)
-                            .if(index == 0) { view in view.padding(.top) }
-                            .if(index != 0) { view in view.padding(.top, 6) }
-                            .if(index == searchHistories.count - 1) { view in view.padding(.bottom) }
-                            .if(index != searchHistories.count - 1) { view in view.padding(.bottom, 6) }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                onSearchHistorySelected(searchHistory: searchHistory)
-                            }
+                        }
+                        .padding(.horizontal)
+                        .if(isFirst) { view in view.padding(.top) }
+                        .if(!isFirst) { view in view.padding(.top, 6) }
+                        .if(isLast) { view in view.padding(.bottom) }
+                        .if(!isLast) { view in view.padding(.bottom, 6) }
+                        .frame(maxWidth: 250)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            onTagSelected(tag: tagCount.tag)
                         }
                     }
-                    .fixedSize(horizontal: true, vertical: false)
-                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
                 }
-            } else {
-                if !tagCounts.isEmpty {
-                    VStack(spacing: 0) {
-                        let (_, searched) = TagCountsRequest.splitSearchText(searchManager.debouncedSearchText)
-                        ForEach(tagCounts.enumerated(), id: \.element.tag) { index, tagCount in
-                            HStack {
-                                Image(systemName: "tag")
-                                    .font(.caption)
-                                Text(highlightString(str: tagCount.tag, searched: searched))
-                                    .lineLimit(1)
-                                    .frame(maxWidth: 200)
-                                    .fixedSize()
-                                Spacer()
-                                Text(String(tagCount.count))
-                                    .foregroundColor(.secondary)
-                                    .padding(.leading, 12)
-                            }
-                            .padding(.horizontal)
-                            .if(index == 0) { view in view.padding(.top) }
-                            .if(index != 0) { view in view.padding(.top, 6) }
-                            .if(index == tagCounts.count - 1) { view in view.padding(.bottom) }
-                            .if(index != tagCounts.count - 1) { view in view.padding(.bottom, 6) }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                onTagSelected(tag: tagCount.tag)
-                            }
-                        }
-                    }
-                    .fixedSize(horizontal: true, vertical: false)
-                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
-                }
+                .fixedSize(horizontal: true, vertical: false)
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
             }
 
             Spacer()
@@ -181,12 +197,14 @@ struct SearchSuggestInnerView: View {
     }
 
     private func onTagSelected(tag: String) {
-        searchManager.searchText = mergeTextAndTag(searchManager.searchText, with: tag) + " "
+        searchManager.searchText = combineSearchText(
+            searchText: searchManager.searchText,
+            tag: tag
+        ) + " "
     }
 
     private func onSearchHistorySelected(searchHistory: SearchHistory) {
-        searchManager.searchText = searchHistory.searchText
-        searchManager.hideSearch()
+        searchManager.searchText = searchHistory.searchText + " "
     }
 
     private func deleteSearchHistories(at offsets: IndexSet) {
@@ -222,60 +240,49 @@ struct SearchSuggestInnerView: View {
         return result
     }
 
-    /// Merges search text and tag with case-insensitive overlap detection,
-    /// adopting the casing from the tag.
-    ///
-    /// - Parameters:
-    ///   - str: The base string.
-    ///   - tag: The string to append. Its casing will be used for the final merged part.
-    /// - Returns: The new string merged according to the rules.
-    func mergeTextAndTag(_ searchText: String, with tag: String) -> String {
-        // if search text have only input tag, replace all to tag
-        let trimmedText = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedText.contains(/\s/) {
+    /**
+     * Combines a search text and a selected tag.
+     *
+     * It first trims leading and trailing whitespace from the search text.
+     * Assuming suggestions are based on partial matches, it then finds the longest match
+     * between the end of the search text and any part of the tag (case-insensitively) to combine them.
+     *
+     * - Parameters:
+     * - searchText: The current text in the search field.
+     * - tag: The tag selected by the user.
+     * - Returns: The combined new search text.
+     */
+    func combineSearchText(searchText: String, tag: String) -> String {
+        // 1. Trim leading and trailing whitespace (spaces, tabs, newlines, etc.) from the search text.
+        let trimmedSearchText = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // 2. If the trimmed result is empty, return the tag directly.
+        if trimmedSearchText.isEmpty {
             return tag
         }
 
-        // remove input tag
-        let str = trimmedText.replacing(/\s+\S+$/, with: "")
+        // 3. Loop from the beginning of the trimmed search text to find the longest possible match.
+        for index in trimmedSearchText.indices {
+            // 4. Check if the current position is at a word boundary (start of string or after whitespace).
+            //    This improves performance by avoiding unnecessary 'contains' checks inside words.
+            let isAtStart = (index == trimmedSearchText.startIndex)
+            let isPrecededByWhitespace = !isAtStart && trimmedSearchText[trimmedSearchText.index(before: index)].isWhitespace
 
-        // --- Basic Edge Cases ---
-        if tag.isEmpty {
-            return str
-        }
+            if isAtStart || isPrecededByWhitespace {
+                // 5. If it's a word boundary, get the substring from the current position to the end.
+                let suffix = String(trimmedSearchText[index...])
 
-        // --- Rule 1: Case-Insensitive Overlap Detection ---
-        // Loop backwards from the longest possible overlap length down to 1.
-        for length in (1 ... min(str.count, tag.count)).reversed() {
-            // Get the suffix and prefix for comparison.
-            let strSuffix = str.suffix(length)
-            let tagPrefix = tag.prefix(length)
-
-            // Compare the lowercased versions for a case-insensitive match.
-            if strSuffix.lowercased() == tagPrefix.lowercased() {
-                // An overlap was found, so check the positional conditions.
-                let overlapStartIndex = str.index(str.endIndex, offsetBy: -length)
-
-                // Condition A: Does the overlap start at the beginning of the string?
-                let isAtStart = (overlapStartIndex == str.startIndex)
-
-                // Condition B: Is the character before the overlap a whitespace?
-                let isAfterWhitespace = (!isAtStart && str[str.index(before: overlapStartIndex)].isWhitespace)
-
-                if isAtStart || isAfterWhitespace {
-                    // --- Rule 2: Adopt Casing from tag ---
-                    // Get the part of str before the overlap.
-                    let baseString = str.prefix(upTo: overlapStartIndex)
-
-                    // Append the ENTIRE tag to the base string to ensure correct casing.
-                    return String(baseString) + tag
+                // 6. Perform a case-insensitive check to see if the tag contains the suffix.
+                if tag.range(of: suffix, options: .caseInsensitive) != nil {
+                    // The first match found is guaranteed to be the longest one because we are looping from the start.
+                    let baseText = String(trimmedSearchText[..<index])
+                    return baseText + tag
                 }
             }
         }
 
-        // --- Fallback: Adding a Space ---
-        // This part is reached if no valid overlap was found.
-        return str + " " + tag
+        // 7. If no overlapping part is found, combine the trimmed search text and the tag with a space.
+        return trimmedSearchText + " " + tag
     }
 }
 
@@ -337,15 +344,28 @@ struct TagCountsRequest: ValueObservationQueryable {
 struct SearchHistoriesRequest: ValueObservationQueryable {
     var libraryId: Int64
     var searchHistoryType: SearchHistoryType
+    var searchText: String
 
     static let queryableOptions = QueryableOptions.async
 
     static var defaultValue: [SearchHistory] { [] }
 
     func fetch(_ db: Database) throws -> [SearchHistory] {
-        return try SearchHistory
+        var query = SearchHistory
             .filter(Column("libraryId") == libraryId)
             .filter(Column("searchHistoryType") == searchHistoryType.rawValue)
+
+        let trimmedSearchText = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedSearchText.isEmpty {
+            let escapedSearchText = ItemQuery.escapeLike(trimmedSearchText)
+            query = query.filter(Column("searchText").like("%\(escapedSearchText)%", escape: "\\"))
+
+            query = query.filter(
+                sql: "NOT (INSTR(LOWER(?), LOWER(searchText)) > 0)",
+                arguments: [trimmedSearchText]
+            )
+        }
+        return try query
             .order(Column("searchedAt").desc)
             .limit(4)
             .fetchAll(db)
