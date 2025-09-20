@@ -14,10 +14,11 @@ struct ItemVideoView: View {
     }
         
     let item: Item
+    let dismiss: () -> Void
     
     @State private var player: AVPlayer?
     
-    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var imageViewerManager: ImageViewerManager
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
     
     private var videoURL: URL? {

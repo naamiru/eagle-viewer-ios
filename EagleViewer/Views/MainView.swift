@@ -47,7 +47,10 @@ struct MainView: View {
             {
                 Group {
                     if ItemVideoView.isVideo(item: item) {
-                        ItemVideoView(item: item)
+                        ItemVideoView(
+                            item: item,
+                            dismiss: { dismiss(item) }
+                        )
                     } else {
                         ImageDetailView(
                             item: item,
