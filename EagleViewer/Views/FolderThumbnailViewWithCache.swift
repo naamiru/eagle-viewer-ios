@@ -108,7 +108,19 @@ struct FolderThumbnailViewWithCache: View {
 
     private func getCoverItemFromDB(globalSortOption: GlobalSortOption) async throws -> Item? {
         try await databaseContext.reader.read { db in
-            // First try to get direct child items
+            // First try to use the folder's specified cover item
+            if let coverItemId = folder.coverItemId {
+                if let item = try Item
+                    .filter(Column("libraryId") == folder.libraryId)
+                    .filter(Column("itemId") == coverItemId)
+                    .filter(Column("isDeleted") == false)
+                    .fetchOne(db)
+                {
+                    return item
+                }
+            }
+
+            // Then try to get direct child items
             if let item = try FolderQuery.folderItems(folder: folder, globalSortOption: globalSortOption)
                 .fetchOne(db)
             {
