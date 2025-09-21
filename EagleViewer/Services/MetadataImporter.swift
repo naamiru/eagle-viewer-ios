@@ -45,6 +45,8 @@ struct MetadataImporter {
         let name: String?
         let modificationTime: Int64?
         let children: [FolderJSON]?
+        let orderBy: String?
+        let sortIncrease: Bool?
     }
     
     struct ItemMetadataJSON: Decodable {
@@ -575,6 +577,31 @@ struct MetadataImporter {
         }
         
         let name = folderJSON.name ?? ""
+
+        // Map Eagle's orderBy to our FolderItemSortType
+        let sortType: String
+        if let orderBy = folderJSON.orderBy {
+            switch orderBy {
+            case "GLOBAL":
+                sortType = FolderItemSortType.global.rawValue
+            case "MANUAL":
+                sortType = FolderItemSortType.manual.rawValue
+            case "IMPORT":
+                sortType = FolderItemSortType.dateAdded.rawValue
+            case "NAME":
+                sortType = FolderItemSortType.title.rawValue
+            case "RATING":
+                sortType = FolderItemSortType.rating.rawValue
+            default:
+                // Unsupported orderBy value, use default
+                sortType = FolderItemSortOption.defaultValue.type.rawValue
+            }
+        } else {
+            sortType = FolderItemSortOption.defaultValue.type.rawValue
+        }
+
+        let sortAscending = folderJSON.sortIncrease ?? FolderItemSortOption.defaultValue.ascending
+
         var folder = Folder(
             libraryId: libraryId,
             folderId: folderId,
@@ -582,13 +609,26 @@ struct MetadataImporter {
             name: name,
             nameForSort: nameForSort(from: name),
             modificationTime: folderJSON.modificationTime ?? 0,
-            manualOrder: manualOrder
+            manualOrder: manualOrder,
+            sortType: sortType,
+            sortAscending: sortAscending,
+            sortModified: false  // Only set to true when user changes in our app
         )
-        
+
         // Use save for existing folders, insert for new folders
         if existingFolderIds.contains(folderId) {
             // keep user setting fields: sortType and sortAscending
             try folder.update(db, columns: ["parentId", "name", "nameForSort", "modificationTime", "manualOrder"])
+
+            // Update sort settings from Eagle metadata only if user hasn't modified them
+            _ = try Folder
+                .filter(Column("libraryId") == libraryId)
+                .filter(Column("folderId") == folderId)
+                .filter(Column("sortModified") == false)
+                .updateAll(db, [
+                    Column("sortType").set(to: sortType),
+                    Column("sortAscending").set(to: sortAscending)
+                ])
         } else {
             try folder.insert(db)
         }

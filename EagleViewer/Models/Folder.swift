@@ -26,6 +26,7 @@ struct Folder: Codable, Identifiable, Hashable, FetchableRecord, MutablePersista
 
     var sortType: String = FolderItemSortOption.defaultValue.type.rawValue
     var sortAscending: Bool = FolderItemSortOption.defaultValue.ascending
+    var sortModified: Bool = false
 
     func sortOption(globalSortOption: GlobalSortOption) -> FolderItemSortOption {
         let type = FolderItemSortType(rawValue: sortType) ?? FolderItemSortOption.defaultValue.type
