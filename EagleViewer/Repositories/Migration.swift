@@ -137,6 +137,15 @@ enum Migration {
             try db.execute(sql: "UPDATE library SET lastImportedFolderMTime = 0")
         }
 
+        migrator.registerMigration("add-folder-cover-item-id") { db in
+            try db.alter(table: "folder") { t in
+                t.add(column: "coverItemId", .text)
+            }
+
+            // Reset folder import timestamp to force re-import of folders with cover item IDs
+            try db.execute(sql: "UPDATE library SET lastImportedFolderMTime = 0")
+        }
+
         return migrator
     }
 }
