@@ -22,7 +22,8 @@ struct FolderRepository {
                 .filter(Column("folderId") == folderId)
                 .updateAll(db, [
                     Column("sortType").set(to: sortOption.type.rawValue),
-                    Column("sortAscending").set(to: sortOption.ascending)
+                    Column("sortAscending").set(to: sortOption.ascending),
+                    Column("sortModified").set(to: true)
                 ])
         }
     }

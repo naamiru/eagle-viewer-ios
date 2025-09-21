@@ -109,12 +109,32 @@ enum Migration {
                 }
                 t.column("searchedAt", .datetime).notNull()
             }
-            
+
             try db.create(
                 index: "idx_searchHistory_searchedAt",
                 on: "searchHistory",
                 columns: ["libraryId", "searchHistoryType", "searchedAt"]
             )
+        }
+
+        migrator.registerMigration("add-folder-sort-modified") { db in
+            try db.alter(table: "folder") { t in
+                t.add(column: "sortModified", .boolean).notNull().defaults(to: false)
+            }
+
+            // Update sortModified to true for folders that have a non-default sortType
+            let defaultSortType = FolderItemSortOption.defaultValue.type.rawValue
+            try db.execute(
+                sql: """
+                UPDATE folder
+                SET sortModified = 1
+                WHERE sortType != ?
+                """,
+                arguments: [defaultSortType]
+            )
+
+            // Reset folder import timestamp to force re-import of folders with new sort settings
+            try db.execute(sql: "UPDATE library SET lastImportedFolderMTime = 0")
         }
 
         return migrator
