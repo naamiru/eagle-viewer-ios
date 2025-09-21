@@ -47,6 +47,7 @@ struct MetadataImporter {
         let children: [FolderJSON]?
         let orderBy: String?
         let sortIncrease: Bool?
+        let coverId: String?
     }
     
     struct ItemMetadataJSON: Decodable {
@@ -610,6 +611,7 @@ struct MetadataImporter {
             nameForSort: nameForSort(from: name),
             modificationTime: folderJSON.modificationTime ?? 0,
             manualOrder: manualOrder,
+            coverItemId: folderJSON.coverId,
             sortType: sortType,
             sortAscending: sortAscending,
             sortModified: false  // Only set to true when user changes in our app
@@ -618,7 +620,7 @@ struct MetadataImporter {
         // Use save for existing folders, insert for new folders
         if existingFolderIds.contains(folderId) {
             // keep user setting fields: sortType and sortAscending
-            try folder.update(db, columns: ["parentId", "name", "nameForSort", "modificationTime", "manualOrder"])
+            try folder.update(db, columns: ["parentId", "name", "nameForSort", "modificationTime", "manualOrder", "coverItemId"])
 
             // Update sort settings from Eagle metadata only if user hasn't modified them
             _ = try Folder

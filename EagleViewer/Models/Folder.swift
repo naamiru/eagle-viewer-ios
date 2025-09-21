@@ -23,6 +23,7 @@ struct Folder: Codable, Identifiable, Hashable, FetchableRecord, MutablePersista
     var nameForSort: String
     var modificationTime: Int64
     var manualOrder: Int
+    var coverItemId: String?
 
     var sortType: String = FolderItemSortOption.defaultValue.type.rawValue
     var sortAscending: Bool = FolderItemSortOption.defaultValue.ascending
@@ -37,5 +38,5 @@ struct Folder: Codable, Identifiable, Hashable, FetchableRecord, MutablePersista
         )
     }
 
-    static let empty: Folder = .init(libraryId: 0, folderId: "", name: "", nameForSort: "", modificationTime: 0, manualOrder: 0)
+    static let empty: Folder = .init(libraryId: 0, folderId: "", name: "", nameForSort: "", modificationTime: 0, manualOrder: 0, coverItemId: nil)
 }
