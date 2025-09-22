@@ -40,3 +40,7 @@ struct Folder: Codable, Identifiable, Hashable, FetchableRecord, MutablePersista
 
     static let empty: Folder = .init(libraryId: 0, folderId: "", name: "", nameForSort: "", modificationTime: 0, manualOrder: 0, coverItemId: nil)
 }
+
+extension Folder: TableRecord {
+    static let folderItems = hasMany(FolderItem.self, using: ForeignKey(["libraryId", "folderId"]))
+}

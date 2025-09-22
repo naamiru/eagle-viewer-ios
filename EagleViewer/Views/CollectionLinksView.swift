@@ -48,19 +48,19 @@ struct CollectionLinksInnerView: View {
     var body: some View {
         AdaptiveGridView(isCollection: true) {
             NavigationLink(value: NavigationDestination.all) {
-                CollectionItemThumbnailView(title: "All", item: allCoverItem)
+                CollectionItemThumbnailView(title: String(localized: "All"), item: allCoverItem)
             }
             .buttonStyle(PlainButtonStyle())
 
             if let uncategorizedCoverItem {
                 NavigationLink(value: NavigationDestination.uncategorized) {
-                    CollectionItemThumbnailView(title: "Uncategorized", item: uncategorizedCoverItem)
+                    CollectionItemThumbnailView(title: String(localized: "Uncategorized"), item: uncategorizedCoverItem)
                 }
                 .buttonStyle(PlainButtonStyle())
             }
 
             NavigationLink(value: NavigationDestination.random) {
-                CollectionThumbnailView(title: "Random", noGradation: true) {
+                CollectionThumbnailView(title: String(localized: "Random"), noGradation: true) {
                     Color.gray.opacity(0.4)
                         .overlay(
                             VStack {

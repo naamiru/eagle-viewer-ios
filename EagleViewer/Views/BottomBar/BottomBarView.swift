@@ -153,7 +153,7 @@ struct LayoutMenu: View {
 
     var body: some View {
         Menu {
-            ForEach(Layout.allCases.reversed(), id: \.self) { layout in
+            ForEach(ListLayout.allCases.reversed(), id: \.self) { layout in
                 Button(action: {
                     settingsManager.setLayout(layout)
                 }) {

@@ -54,6 +54,29 @@ struct StoredItem: Codable, Identifiable, FetchableRecord, MutablePersistableRec
     var duration: Double
     var tags: [String]
     var annotation: String
+
+    static var empty: StoredItem {
+        StoredItem(
+            libraryId: 0,
+            itemId: "",
+            name: "",
+            nameForSort: "",
+            size: 0,
+            btime: 0,
+            mtime: 0,
+            ext: "",
+            isDeleted: false,
+            modificationTime: 0,
+            height: 0,
+            width: 0,
+            lastModified: 0,
+            noThumbnail: false,
+            star: 0,
+            duration: 0,
+            tags: [],
+            annotation: ""
+        )
+    }
 }
 
 extension StoredItem: TableRecord {

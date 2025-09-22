@@ -11,19 +11,19 @@ import SwiftUI
 
 struct AllCollectionView: View {
     var body: some View {
-        CollectionView<AllCollectionRequest>(title: "All", navigationDestination: .all)
+        CollectionView<AllCollectionRequest>(title: String(localized: "All"), navigationDestination: .all)
     }
 }
 
 struct UncategorizedCollectionView: View {
     var body: some View {
-        CollectionView<UncategorizedCollectionRequest>(title: "Uncategorized", navigationDestination: .uncategorized)
+        CollectionView<UncategorizedCollectionRequest>(title: String(localized: "Uncategorized"), navigationDestination: .uncategorized)
     }
 }
 
 struct RandomCollectionView: View {
     var body: some View {
-        CollectionView<RandomCollectionRequest>(title: "Random", navigationDestination: .random)
+        CollectionView<RandomCollectionRequest>(title: String(localized: "Random"), navigationDestination: .random)
     }
 }
 

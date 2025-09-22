@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum Layout: String, CaseIterable {
+enum ListLayout: String, CaseIterable {
     case col3 = "col3"
     case col4 = "col4"
     case col6 = "col6"
@@ -24,5 +24,5 @@ enum Layout: String, CaseIterable {
         return isPortrait ? baseCount : baseCount * 2
     }
     
-    static let defaultValue: Layout = .col3
+    static let defaultValue: ListLayout = .col3
 }

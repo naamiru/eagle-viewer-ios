@@ -22,6 +22,8 @@ struct ImageDetailView: View {
 
     @State private var scale: CGFloat = 1
     
+    @State private var isInfoPresented = false
+    
     private let prefetcher = ImagePrefetcher()
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
     
@@ -97,9 +99,21 @@ struct ImageDetailView: View {
                 
                 Spacer()
                 
-                Text(selectedItem.name)
-                    .font(.headline)
-                    .lineLimit(1)
+                Button(action: {
+                    isInfoPresented.toggle()
+                }) {
+                    Text(selectedItem.name)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                    
+                    Image(systemName: "info.circle")
+                        .foregroundColor(.primary)
+                }
+                .padding(.horizontal)
+                .frame(height: 44)
+                .contentShape(RoundedRectangle(cornerRadius: 22))
+                .glassEffect(.regular.interactive())
                 
                 Spacer()
                 
@@ -232,6 +246,10 @@ struct ImageDetailView: View {
                     .transition(.opacity)
                 }
             }
+        }
+        .sheet(isPresented: $isInfoPresented) {
+            ItemInfoView(item: selectedItem)
+                .presentationDetents([.medium, .large])
         }
         .statusBar(hidden: isNoUI)
         .onAppear {

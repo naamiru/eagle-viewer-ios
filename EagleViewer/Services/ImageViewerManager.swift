@@ -28,4 +28,10 @@ class ImageViewerManager: ObservableObject {
             self.isPresented = true
         }
     }
+
+    func hide() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isPresented = false
+        }
+    }
 }

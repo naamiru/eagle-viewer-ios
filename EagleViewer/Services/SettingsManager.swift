@@ -14,7 +14,7 @@ class SettingsManager: ObservableObject {
     @Published private(set) var activeLibraryId: Int64?
     @Published private(set) var globalSortOption: GlobalSortOption
     @Published private(set) var folderSortOption: FolderSortOption
-    @Published private(set) var layout: Layout
+    @Published private(set) var layout: ListLayout
 
     private init() {
         if let storedValue = UserDefaults.standard.object(forKey: "activeLibraryId") as? Int {
@@ -34,7 +34,7 @@ class SettingsManager: ObservableObject {
         self.folderSortOption = FolderSortOption(type: folderSortType, ascending: folderAscending)
 
         self.layout = UserDefaults.standard.string(forKey: "layout")
-            .flatMap { Layout(rawValue: $0) } ?? Layout.defaultValue
+            .flatMap { ListLayout(rawValue: $0) } ?? ListLayout.defaultValue
     }
 
     func setActiveLibrary(id: Int64?) {
@@ -58,7 +58,7 @@ class SettingsManager: ObservableObject {
         UserDefaults.standard.set(option.ascending, forKey: "folderSortAscending")
     }
 
-    func setLayout(_ layout: Layout) {
+    func setLayout(_ layout: ListLayout) {
         self.layout = layout
         UserDefaults.standard.set(layout.rawValue, forKey: "layout")
     }
