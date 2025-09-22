@@ -62,14 +62,16 @@ struct ItemInfoInnerView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(verbatim: item.name)
                     .bold()
-                Text(verbatim: "\(item.ext.uppercased())・\(item.width) ⨯ \(item.height)・\(item.size)")
+                Text(verbatim: "\(item.ext.uppercased()) · \(item.width) × \(item.height) · \(sizeText(item.size))")
                     .font(.caption)
                     .foregroundColor(.secondary)
 
-                HStack(spacing: 2) {
-                    ForEach(0 ..< 5, id: \.self) { i in
-                        Image(systemName: i < item.star ? "star.fill" : "star")
-                            .foregroundColor(.secondary)
+                if item.star > 0 {
+                    HStack(spacing: 2) {
+                        ForEach(0 ..< 5, id: \.self) { i in
+                            Image(systemName: i < item.star ? "star.fill" : "star")
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
             }
@@ -170,6 +172,24 @@ struct ItemInfoInnerView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func sizeText(_ sizeInBytes: Int) -> String {
+        let kb = 1024.0
+        let mb = kb * 1024.0
+        let gb = mb * 1024.0
+
+        let size = Double(sizeInBytes)
+
+        if size >= gb {
+            return String(format: "%.1fGB", size / gb)
+        } else if size >= mb {
+            return String(format: "%.1fMB", size / mb)
+        } else if size >= kb {
+            return String(format: "%.1fKB", size / kb)
+        } else {
+            return "\(sizeInBytes)B"
+        }
     }
 
     private func moveToFolder(_ folder: Folder) {
