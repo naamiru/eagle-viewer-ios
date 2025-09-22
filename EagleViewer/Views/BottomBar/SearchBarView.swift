@@ -44,7 +44,9 @@ struct SearchBarView: View {
 
                 Button(action: {
                     isSearchFieldFocused = false
-                    searchManager.clearSearch()
+                    DispatchQueue.main.async { // avoid conflict between list and keyboard animation
+                        searchManager.clearSearch()
+                    }
                 }) {
                     Image(systemName: "xmark")
                         .foregroundColor(Color.primary)
