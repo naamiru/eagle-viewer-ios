@@ -211,10 +211,11 @@ struct ItemInfoInnerView: View {
     private func moveToTag(_ tag: String) {
         dismiss()
         imageViewerManager.hide()
-        DispatchQueue.main.async {
-            if navigationManager.path == [.all] {
-                searchManager.searchText = tag
-            } else {
+        if navigationManager.path == [.all] {
+            searchManager.setSearchTextImmediately(tag)
+            searchManager.triggerScrollToTop()
+        } else {
+            DispatchQueue.main.async {
                 searchManager.keepSearchTextInNextNavigation(searchText: tag)
                 navigationManager.path = [.all]
             }

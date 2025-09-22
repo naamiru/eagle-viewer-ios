@@ -51,6 +51,11 @@ struct ItemListView: View {
                             }
                     }
                 }
+                .onChange(of: searchManager.scrollToTopTrigger) {
+                    if let firstItem = items.first {
+                        proxy.scrollTo(firstItem.itemId, anchor: .top)
+                    }
+                }
             }
         }
     }

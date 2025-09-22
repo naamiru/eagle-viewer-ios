@@ -12,6 +12,7 @@ class SearchManager: ObservableObject {
     @Published var searchText = ""
     @Published var debouncedSearchText = ""
     @Published var isSearchActive = false
+    @Published var scrollToTopTrigger = UUID()
 
     private var currentPageHandler: ((String) -> Void)?
     private var isKeepingSearchTextInNextNavigation = false
@@ -30,12 +31,15 @@ class SearchManager: ObservableObject {
     func setSearchHandler(_ handler: @escaping (String) -> Void) {
         if isKeepingSearchTextInNextNavigation {
             isKeepingSearchTextInNextNavigation = false
+            currentPageHandler = handler
+            // Immediately call handler with existing search text
+            handler(debouncedSearchText)
         } else {
             // Reset everything when page changes
             clearSearch()
+            currentPageHandler = handler
         }
         isSearchActive = false
-        currentPageHandler = handler
     }
 
     func showSearch() {
@@ -57,5 +61,15 @@ class SearchManager: ObservableObject {
         self.searchText = searchText
         debouncedSearchText = searchText
         isKeepingSearchTextInNextNavigation = true
+    }
+
+    func setSearchTextImmediately(_ text: String) {
+        searchText = text
+        debouncedSearchText = text
+        currentPageHandler?(text)
+    }
+
+    func triggerScrollToTop() {
+        scrollToTopTrigger = UUID()
     }
 }
