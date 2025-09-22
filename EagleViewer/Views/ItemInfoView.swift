@@ -86,6 +86,7 @@ struct ItemInfoInnerView: View {
                                 moveToFolder(folder)
                             }) {
                                 Text(verbatim: folder.name)
+                                    .lineLimit(1)
                                     .padding(.vertical, 5)
                                     .padding(.horizontal, 12)
                                     .foregroundColor(.primary.opacity(0.6))
@@ -191,8 +192,12 @@ struct ItemInfoInnerView: View {
         dismiss()
         imageViewerManager.hide()
         DispatchQueue.main.async {
-            searchManager.searchText = tag
-            navigationManager.path = [.all]
+            if navigationManager.path == [.all] {
+                searchManager.searchText = tag
+            } else {
+                searchManager.keepSearchTextInNextNavigation(searchText: tag)
+                navigationManager.path = [.all]
+            }
         }
     }
 }

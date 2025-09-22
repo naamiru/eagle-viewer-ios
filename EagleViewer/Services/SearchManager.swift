@@ -14,6 +14,7 @@ class SearchManager: ObservableObject {
     @Published var isSearchActive = false
 
     private var currentPageHandler: ((String) -> Void)?
+    private var isKeepingSearchTextInNextNavigation = false
     private var searchCancellable: AnyCancellable?
 
     init() {
@@ -27,8 +28,12 @@ class SearchManager: ObservableObject {
     }
 
     func setSearchHandler(_ handler: @escaping (String) -> Void) {
-        // Reset everything when page changes
-        clearSearch()
+        if isKeepingSearchTextInNextNavigation {
+            isKeepingSearchTextInNextNavigation = false
+        } else {
+            // Reset everything when page changes
+            clearSearch()
+        }
         isSearchActive = false
         currentPageHandler = handler
     }
@@ -46,5 +51,11 @@ class SearchManager: ObservableObject {
     func clearSearch() {
         searchText = ""
         debouncedSearchText = ""
+    }
+
+    func keepSearchTextInNextNavigation(searchText: String) {
+        self.searchText = searchText
+        debouncedSearchText = searchText
+        isKeepingSearchTextInNextNavigation = true
     }
 }

@@ -22,19 +22,23 @@ struct FlowLayout: Layout {
     }
     
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
+        let maxPossibleWidth = proposal.replacingUnspecifiedDimensions().width
         let result = FlowResult(
-            in: proposal.replacingUnspecifiedDimensions().width,
+            in: maxPossibleWidth,
             subviews: subviews,
             alignment: alignment,
             spacing: spacing
         )
+        
         for row in result.rows {
             let rowXOffset = (bounds.width - row.frame.width) * alignment.horizontal.percent
             for index in row.range {
+                let subviewSize = subviews[index].sizeThatFits(ProposedViewSize(width: maxPossibleWidth, height: nil))
+                
                 let xPos = rowXOffset + row.frame.minX + row.xOffsets[index - row.range.lowerBound] + bounds.minX
-                let rowYAlignment = (row.frame.height - subviews[index].sizeThatFits(.unspecified).height) *
-                    alignment.vertical.percent
+                let rowYAlignment = (row.frame.height - subviewSize.height) * alignment.vertical.percent
                 let yPos = row.frame.minY + rowYAlignment + bounds.minY
+                
                 subviews[index].place(at: CGPoint(x: xPos, y: yPos), anchor: .topLeading, proposal: .unspecified)
             }
         }
@@ -56,8 +60,11 @@ struct FlowLayout: Layout {
             var rowMinY = 0.0
             var rowHeight = 0.0
             var xOffsets: [Double] = []
+            
             for (index, subview) in zip(subviews.indices, subviews) {
-                let idealSize = subview.sizeThatFits(.unspecified)
+                let proposal = ProposedViewSize(width: maxPossibleWidth, height: nil)
+                let idealSize = subview.sizeThatFits(proposal)
+                
                 if index != 0 && widthInRow(index: index, idealWidth: idealSize.width) > remainingWidth {
                     // Finish the current row without this subview.
                     finalizeRow(index: max(index - 1, 0), idealSize: idealSize)
