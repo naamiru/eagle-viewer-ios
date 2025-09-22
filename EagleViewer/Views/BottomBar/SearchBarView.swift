@@ -197,14 +197,16 @@ struct SearchSuggestInnerView: View {
     }
 
     private func onTagSelected(tag: String) {
-        searchManager.searchText = combineSearchText(
-            searchText: searchManager.searchText,
-            tag: tag
-        ) + " "
+        searchManager.setSearchTextImmediately(
+            combineSearchText(
+                searchText: searchManager.searchText,
+                tag: tag
+            ) + " "
+        )
     }
 
     private func onSearchHistorySelected(searchHistory: SearchHistory) {
-        searchManager.searchText = searchHistory.searchText + " "
+        searchManager.setSearchTextImmediately(searchHistory.searchText + " ")
     }
 
     private func deleteSearchHistories(at offsets: IndexSet) {
