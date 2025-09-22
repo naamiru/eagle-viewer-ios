@@ -33,13 +33,20 @@ struct FlowLayout: Layout {
         for row in result.rows {
             let rowXOffset = (bounds.width - row.frame.width) * alignment.horizontal.percent
             for index in row.range {
-                let subviewSize = subviews[index].sizeThatFits(ProposedViewSize(width: maxPossibleWidth, height: nil))
+                // Calculate the ideal size for this subview
+                let idealSize = subviews[index].sizeThatFits(ProposedViewSize(width: maxPossibleWidth, height: nil))
+
+                // Fix 1: Clamp the width to not exceed the container's maximum width.
+                let finalWidth = min(idealSize.width, maxPossibleWidth)
                 
+                // Calculate the x and y positions
                 let xPos = rowXOffset + row.frame.minX + row.xOffsets[index - row.range.lowerBound] + bounds.minX
-                let rowYAlignment = (row.frame.height - subviewSize.height) * alignment.vertical.percent
+                let rowYAlignment = (row.frame.height - idealSize.height) * alignment.vertical.percent
                 let yPos = row.frame.minY + rowYAlignment + bounds.minY
-                
-                subviews[index].place(at: CGPoint(x: xPos, y: yPos), anchor: .topLeading, proposal: .unspecified)
+
+                // Fix 2: Instruct the subview to place itself using the final, clamped size instead of .unspecified.
+                let placeProposal = ProposedViewSize(width: finalWidth, height: idealSize.height)
+                subviews[index].place(at: CGPoint(x: xPos, y: yPos), anchor: .topLeading, proposal: placeProposal)
             }
         }
     }
@@ -63,8 +70,12 @@ struct FlowLayout: Layout {
             
             for (index, subview) in zip(subviews.indices, subviews) {
                 let proposal = ProposedViewSize(width: maxPossibleWidth, height: nil)
-                let idealSize = subview.sizeThatFits(proposal)
+                var idealSize = subview.sizeThatFits(proposal) // Made mutable with var
                 
+                // Fix 3: Clamp the width of the calculated idealSize.
+                // This prevents the total row width calculation from exceeding the container width.
+                idealSize.width = min(idealSize.width, maxPossibleWidth)
+
                 if index != 0 && widthInRow(index: index, idealWidth: idealSize.width) > remainingWidth {
                     // Finish the current row without this subview.
                     finalizeRow(index: max(index - 1, 0), idealSize: idealSize)
