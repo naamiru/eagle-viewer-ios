@@ -10,40 +10,11 @@ import GRDBQuery
 import SwiftUI
 
 struct CollectionLinksView: View {
-    @State private var allCoverItemRequest = AllCoverItemRequest(libraryId: 0, sortOption: .defaultValue)
-    @State private var uncategorizedCoverItemRequest = UncategorizedCoverItemRequest(libraryId: 0, sortOption: .defaultValue)
+    @Query(AllCoverItemRequest(libraryId: 0, sortOption: .defaultValue)) private var allCoverItem: Item?
+    @Query(UncategorizedCoverItemRequest(libraryId: 0, sortOption: .defaultValue)) private var uncategorizedCoverItem: Item?
 
     @Environment(\.library) private var library
     @EnvironmentObject private var settingsManager: SettingsManager
-
-    var body: some View {
-        CollectionLinksInnerView(
-            allCoverItemRequest: $allCoverItemRequest,
-            uncategorizedCoverItemRequest: $uncategorizedCoverItemRequest
-        )
-        .onChange(of: library.id, initial: true) {
-            allCoverItemRequest.libraryId = library.id
-            uncategorizedCoverItemRequest.libraryId = library.id
-        }
-        .onChange(of: settingsManager.globalSortOption, initial: true) {
-            allCoverItemRequest.sortOption = settingsManager.globalSortOption
-            uncategorizedCoverItemRequest.sortOption = settingsManager.globalSortOption
-        }
-    }
-}
-
-struct CollectionLinksInnerView: View {
-    @Query<AllCoverItemRequest> private var allCoverItem: Item?
-    @Query<UncategorizedCoverItemRequest> private var uncategorizedCoverItem: Item?
-    @EnvironmentObject private var settingsManager: SettingsManager
-
-    init(
-        allCoverItemRequest: Binding<AllCoverItemRequest>,
-        uncategorizedCoverItemRequest: Binding<UncategorizedCoverItemRequest>
-    ) {
-        _allCoverItem = Query(allCoverItemRequest)
-        _uncategorizedCoverItem = Query(uncategorizedCoverItemRequest)
-    }
 
     var body: some View {
         AdaptiveGridView(isCollection: true) {
@@ -74,6 +45,14 @@ struct CollectionLinksInnerView: View {
                 }
             }
             .buttonStyle(PlainButtonStyle())
+        }
+        .onChange(of: library.id, initial: true) {
+            $allCoverItem.libraryId.wrappedValue = library.id
+            $uncategorizedCoverItem.libraryId.wrappedValue = library.id
+        }
+        .onChange(of: settingsManager.globalSortOption, initial: true) {
+            $allCoverItem.sortOption.wrappedValue = settingsManager.globalSortOption
+            $uncategorizedCoverItem.sortOption.wrappedValue = settingsManager.globalSortOption
         }
     }
 }
