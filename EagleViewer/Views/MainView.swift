@@ -82,23 +82,6 @@ struct MainView: View {
                 }
             }
         }
-        .onChange(of: navigationManager.path) { oldPath, _ in
-            // Save search history when leave home view
-            if oldPath.isEmpty {
-                let searchText = searchManager.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !searchText.isEmpty {
-                    Task {
-                        let searchHistory = SearchHistory(
-                            libraryId: library.id,
-                            searchHistoryType: .folder,
-                            searchText: searchText,
-                            searchedAt: Date()
-                        )
-                        try? await repositories.searchHistory.save(searchHistory)
-                    }
-                }
-            }
-        }
         .onChange(of: library, initial: true) { oldLibrary, newLibrary in
             if oldLibrary.id != newLibrary.id // library changed
                 || oldLibrary == newLibrary // inital call

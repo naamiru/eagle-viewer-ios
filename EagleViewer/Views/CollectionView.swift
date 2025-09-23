@@ -59,7 +59,7 @@ struct CollectionView<T: CollectionQueryable>: View where T.Value == [Item], T.C
             request.sortOption = settingsManager.globalSortOption
         }
         .onAppear {
-            searchManager.setSearchHandler { text in
+            searchManager.setSearchHandler(initialSearchText: request.searchText) { text in
                 request.searchText = text
             }
         }

@@ -14,6 +14,7 @@ enum AppEvent {
     case globalSortChanged
     case importProgressChanged
     case folderCacheInvalidated
+    case navigationWillReset
 }
 
 class EventCenter: ObservableObject {
@@ -28,5 +29,4 @@ class EventCenter: ObservableObject {
     func post(_ event: AppEvent) {
         publisher.send(event)
     }
-
 }
