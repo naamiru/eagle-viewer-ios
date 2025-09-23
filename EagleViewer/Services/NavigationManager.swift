@@ -71,6 +71,7 @@ final class NavigationManager: ObservableObject {
     }
 
     func popToRoot() {
+        EventCenter.shared.post(.navigationWillReset)
         path.removeAll()
     }
 }

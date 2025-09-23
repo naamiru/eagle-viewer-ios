@@ -25,6 +25,7 @@ struct FolderDetailInnerView: View {
 
     @EnvironmentObject private var settingsManager: SettingsManager
     @EnvironmentObject private var searchManager: SearchManager
+    @Environment(\.repositories) private var repositories
 
     init(folder: Folder) {
         self.folder = folder
@@ -44,7 +45,7 @@ struct FolderDetailInnerView: View {
                                 .foregroundColor(.secondary)
                                 .padding(.horizontal, 20)
                         }
-                        FolderListView(folders: childFolders, placeholderType: .none)
+                        FolderListView(folders: childFolders, placeholderType: .none, onSelected: onChildFolderSelected)
                     }
                 }
                 if !items.isEmpty || childFolders.isEmpty {
@@ -77,9 +78,25 @@ struct FolderDetailInnerView: View {
             $childFolders.folderSortOption.wrappedValue = settingsManager.folderSortOption
         }
         .onAppear {
-            searchManager.setSearchHandler { text in
+            searchManager.setSearchHandler(initialSearchText: $items.searchText.wrappedValue) { text in
                 $items.searchText.wrappedValue = text
                 $childFolders.searchText.wrappedValue = text
+            }
+        }
+    }
+
+    private func onChildFolderSelected(_ folder: Folder) {
+        let searchText = searchManager.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !searchText.isEmpty {
+            Task {
+                try? await repositories.searchHistory.save(
+                    SearchHistory(
+                        libraryId: folder.libraryId,
+                        searchHistoryType: .item,
+                        searchText: searchText,
+                        searchedAt: Date()
+                    )
+                )
             }
         }
     }

@@ -28,14 +28,14 @@ class SearchManager: ObservableObject {
             }
     }
 
-    func setSearchHandler(_ handler: @escaping (String) -> Void) {
+    func setSearchHandler(initialSearchText: String, handler: @escaping (String) -> Void) {
         currentPageHandler = nil
 
         if isKeepingSearchTextInNextNavigation {
             isKeepingSearchTextInNextNavigation = false
         } else {
             // Reset everything when page changes
-            clearSearch()
+            setSearchTextImmediately(initialSearchText)
         }
 
         // immediately apply search

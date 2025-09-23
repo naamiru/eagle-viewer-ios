@@ -18,10 +18,14 @@ enum PlaceholderType {
 struct FolderListView: View {
     let folders: [Folder]
     let placeholderType: PlaceholderType
+    let onSelected: ((Folder) -> Void)?
 
-    init(folders: [Folder], placeholderType: PlaceholderType = .none) {
+    @EnvironmentObject private var navigationManager: NavigationManager
+
+    init(folders: [Folder], placeholderType: PlaceholderType = .none, onSelected: ((Folder) -> Void)? = nil) {
         self.folders = folders
         self.placeholderType = placeholderType
+        self.onSelected = onSelected
     }
 
     var body: some View {
@@ -37,27 +41,16 @@ struct FolderListView: View {
         } else {
             AdaptiveGridView(isCollection: true) {
                 ForEach(folders) { folder in
-                    NavigationLink(value: NavigationDestination.folder(folder.id)) {
+                    Button(action: {
+                        onSelected?(folder)
+                        navigationManager.path.append(.folder(folder.id))
+                    }) {
                         FolderThumbnailViewWithCache(folder: folder)
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
             }
         }
-    }
-}
-
-struct FolderListRequestView<T: ValueObservationQueryable>: View where T.Value == [Folder], T.Context == DatabaseContext {
-    @Query<T> var folders: [Folder]
-    let placeholderType: PlaceholderType
-
-    init(request: Binding<T>, placeholderType: PlaceholderType = .none) {
-        _folders = Query(request, in: \.databaseContext)
-        self.placeholderType = placeholderType
-    }
-
-    var body: some View {
-        FolderListView(folders: folders, placeholderType: placeholderType)
     }
 }
 

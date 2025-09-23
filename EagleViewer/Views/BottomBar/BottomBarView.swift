@@ -51,18 +51,23 @@ struct BottomBarView: View, KeyboardReadable {
 
 struct HomeButton: View {
     @EnvironmentObject private var navigationManager: NavigationManager
+    @EnvironmentObject private var searchManager: SearchManager
+
+    var isDisabled: Bool {
+        navigationManager.path.isEmpty && searchManager.searchText.isEmpty
+    }
 
     var body: some View {
         Button(action: {
             navigationManager.popToRoot()
         }) {
             Image(systemName: "house")
-                .foregroundColor(navigationManager.path.count == 0 ? Color.secondary : Color.primary)
+                .foregroundColor(isDisabled ? Color.secondary : Color.primary)
         }
-        .disabled(navigationManager.path.count == 0)
+        .disabled(isDisabled)
         .frame(width: 44, height: 44)
         .contentShape(.circle)
-        .glassEffect(navigationManager.path.count == 0 ? .regular : .regular.interactive())
+        .glassEffect(isDisabled ? .regular : .regular.interactive())
     }
 }
 
