@@ -3,29 +3,12 @@ import GRDBQuery
 import SwiftUI
 
 struct FolderDetailView: View {
-    let id: Folder.ID
-    @State private var request: FolderRequest
+    @Query<FolderRequest> private var folder: Folder?
 
     @EnvironmentObject private var navigationManager: NavigationManager
 
     init(id: Folder.ID) {
-        self.id = id
-        _request = State(initialValue: FolderRequest(libraryId: id.libraryId, folderId: id.folderId))
-    }
-
-    var body: some View {
-        FolderDetailRequestView(request: $request)
-            .onChange(of: id.folderId) {
-                request.folderId = id.folderId
-            }
-    }
-}
-
-struct FolderDetailRequestView: View {
-    @Query<FolderRequest> private var folder: Folder?
-
-    init(request: Binding<FolderRequest>) {
-        self._folder = Query(request)
+        _folder = Query(FolderRequest(libraryId: id.libraryId, folderId: id.folderId))
     }
 
     var body: some View {
@@ -37,50 +20,16 @@ struct FolderDetailRequestView: View {
 
 struct FolderDetailInnerView: View {
     let folder: Folder
-    @State private var itemsRequest: FolderItemsRequest
-    @State private var childFoldersRequest: ChildFoldersRequest
+    @Query<FolderItemsRequest> private var items: [Item]
+    @Query<ChildFoldersRequest> private var childFolders: [Folder]
 
     @EnvironmentObject private var settingsManager: SettingsManager
+    @EnvironmentObject private var searchManager: SearchManager
 
     init(folder: Folder) {
         self.folder = folder
-        self._itemsRequest = State(initialValue: FolderItemsRequest(folder: folder, globalSortOption: GlobalSortOption.defaultValue))
-        self._childFoldersRequest = State(initialValue: ChildFoldersRequest(folder: folder, folderSortOption: FolderSortOption.defaultValue))
-    }
-
-    var body: some View {
-        FolderDetailInnerRequestView(
-            itemsRequest: $itemsRequest,
-            childFoldersRequest: $childFoldersRequest
-        )
-        .navigationTitle(folder.name)
-        .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: folder, initial: true) {
-            itemsRequest.folder = folder
-            childFoldersRequest.folder = folder
-        }
-        .onChange(of: settingsManager.globalSortOption, initial: true) {
-            itemsRequest.globalSortOption = settingsManager.globalSortOption
-        }
-        .onChange(of: settingsManager.folderSortOption, initial: true) {
-            childFoldersRequest.folderSortOption = settingsManager.folderSortOption
-        }
-    }
-}
-
-struct FolderDetailInnerRequestView: View {
-    @Query<ChildFoldersRequest> private var childFolders: [Folder]
-    @Query<FolderItemsRequest> private var items: [Item]
-    @Binding var itemsRequest: FolderItemsRequest
-    @Binding var childFoldersRequest: ChildFoldersRequest
-
-    @EnvironmentObject private var searchManager: SearchManager
-
-    init(itemsRequest: Binding<FolderItemsRequest>, childFoldersRequest: Binding<ChildFoldersRequest>) {
-        self._itemsRequest = itemsRequest
-        self._childFoldersRequest = childFoldersRequest
-        _childFolders = Query(childFoldersRequest)
-        _items = Query(itemsRequest)
+        _items = Query(FolderItemsRequest(folder: folder, globalSortOption: GlobalSortOption.defaultValue))
+        _childFolders = Query(ChildFoldersRequest(folder: folder, folderSortOption: FolderSortOption.defaultValue))
     }
 
     var body: some View {
@@ -114,13 +63,25 @@ struct FolderDetailInnerRequestView: View {
             }
         }
         .searchDismissible()
+        .safeAreaPadding(.bottom, 52)
+        .navigationTitle(folder.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: folder, initial: true) {
+            $items.folder.wrappedValue = folder
+            $childFolders.folder.wrappedValue = folder
+        }
+        .onChange(of: settingsManager.globalSortOption, initial: true) {
+            $items.globalSortOption.wrappedValue = settingsManager.globalSortOption
+        }
+        .onChange(of: settingsManager.folderSortOption, initial: true) {
+            $childFolders.folderSortOption.wrappedValue = settingsManager.folderSortOption
+        }
         .onAppear {
             searchManager.setSearchHandler { text in
-                itemsRequest.searchText = text
-                childFoldersRequest.searchText = text
+                $items.searchText.wrappedValue = text
+                $childFolders.searchText.wrappedValue = text
             }
         }
-        .safeAreaPadding(.bottom, 52)
     }
 }
 
