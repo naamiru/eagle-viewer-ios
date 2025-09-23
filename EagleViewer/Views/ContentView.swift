@@ -11,27 +11,12 @@ import OSLog
 import SwiftUI
 
 struct ContentView: View {
-    @State private var activeLibraryRequest = ActiveLibraryRequest(activeLibraryId: nil)
-
-    @EnvironmentObject private var settingsManager: SettingsManager
-
-    var body: some View {
-        ContentInnerView(activeLibraryRequest: $activeLibraryRequest)
-            .onChange(of: settingsManager.activeLibraryId, initial: true) {
-                activeLibraryRequest.activeLibraryId = settingsManager.activeLibraryId
-            }
-    }
-}
-
-struct ContentInnerView: View {
-    @Query<ActiveLibraryRequest> private var dbActiveLibrary: Library?
+    @Query(ActiveLibraryRequest(activeLibraryId: nil)) private var dbActiveLibrary
     @State private var activeLibrary: Library? = nil
+
     @EnvironmentObject private var folderManager: LibraryFolderManager
     @EnvironmentObject private var eventCenter: EventCenter
-
-    init(activeLibraryRequest: Binding<ActiveLibraryRequest>) {
-        _dbActiveLibrary = Query(activeLibraryRequest)
-    }
+    @EnvironmentObject private var settingsManager: SettingsManager
 
     var body: some View {
         Group {
@@ -41,6 +26,9 @@ struct ContentInnerView: View {
             } else {
                 FirstLaunchView()
             }
+        }
+        .onChange(of: settingsManager.activeLibraryId, initial: true) {
+            $dbActiveLibrary.activeLibraryId.wrappedValue = settingsManager.activeLibraryId
         }
         .onChange(of: dbActiveLibrary, initial: true) {
             if activeLibrary?.id != dbActiveLibrary?.id {
