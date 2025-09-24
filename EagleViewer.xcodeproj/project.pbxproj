@@ -306,6 +306,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = EagleViewer/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Eagle Viewer";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Add image to the Photos app";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -343,6 +344,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = EagleViewer/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Eagle Viewer";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Add image to the Photos app";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
