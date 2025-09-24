@@ -40,6 +40,19 @@ struct ItemListView: View {
                             .aspectRatio(1, contentMode: .fill)
                             .clipped()
                             .contentShape(Rectangle())
+                            .if(ItemVideoView.isVideo(item: item)) { view in
+                                view.overlay(alignment: .topLeading) {
+                                    Text(item.ext.uppercased())
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundColor(.white.opacity(0.8))
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 4)
+                                        .background(.black.opacity(0.5))
+                                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                                        .padding(5)
+                                        .allowsHitTesting(false)
+                                }
+                            }
                             .id(item.itemId)
                             .onTapGesture {
                                 searchManager.hideSearch()
