@@ -10,6 +10,7 @@ import SwiftUI
 
 struct ItemImageView: View {
     let item: Item
+    let isSelected: Bool
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
     
     private var imageURL: URL? {
@@ -34,9 +35,19 @@ struct ItemImageView: View {
         if let imageURL {
             LazyImage(url: imageURL) { state in
                 if let image = state.image {
-                    image
-                        .resizable()
-                        .aspectRatio(CGSize(width: item.width, height: item.height), contentMode: .fit)
+                    if item.imagePath.lowercased().hasSuffix(".gif")
+                        || item.imagePath.lowercased().hasSuffix(".webp")
+                    {
+                        AnimatedImageView(
+                            url: imageURL,
+                            contentMode: .scaleAspectFit,
+                            shouldAnimate: isSelected
+                        )
+                    } else {
+                        image
+                            .resizable()
+                            .aspectRatio(CGSize(width: item.width, height: item.height), contentMode: .fit)
+                    }
                 } else if state.error != nil {
                     placeholder
                 } else {

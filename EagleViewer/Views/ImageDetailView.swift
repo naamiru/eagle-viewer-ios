@@ -141,7 +141,10 @@ struct ImageDetailView: View {
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 0) {
                         ForEach(items, id: \.itemId) { item in
-                            ItemImageView(item: item)
+                            ItemImageView(
+                                item: item,
+                                isSelected: item.itemId == mainScrollId
+                            )
                                 .zoomable(
                                     isSelected: item.itemId == mainScrollId,
                                     isNoUI: $isNoUI,

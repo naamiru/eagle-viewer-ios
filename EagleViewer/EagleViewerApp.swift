@@ -7,6 +7,8 @@
 
 import Nuke
 import NukeVideo
+import SDWebImage
+import SDWebImageWebPCoder
 import SwiftUI
 
 @main
@@ -29,6 +31,9 @@ struct EagleViewerApp: App {
 
         // enable NukeVidee
         ImageDecoderRegistry.shared.register(ImageDecoders.Video.init)
+
+        // enabled webp
+        SDImageCodersManager.shared.addCoder(SDImageWebPCoder.shared)
     }
 
     var body: some Scene {
