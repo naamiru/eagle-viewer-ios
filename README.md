@@ -32,3 +32,7 @@ An iOS app for viewing [Eagle](https://jp.eagle.cool/) image libraries on iPhone
 - **Access from multiple sources**: Local storage, iCloud Drive, and network shares (NAS)
 - **Automatic sync**: Changes made on desktop are reflected immediately
 - **Offline browsing**: Cache images for viewing without internet connection
+
+## Contributions
+
+Feel free to create issues and PRs.
