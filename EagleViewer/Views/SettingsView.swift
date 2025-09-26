@@ -113,7 +113,7 @@ struct SettingsView: View {
     private func updateLibraryFolder(name: String, bookmarkData: Data) {
         Task {
             do {
-                try await repositories.library.updateFolder(id: library.id, name: name, bookmarkData: bookmarkData)
+                try await repositories.library.updateFolder(id: library.id, name: name, source: .file(bookmarkData: bookmarkData))
                 path = NavigationPath()
             } catch {
                 // Handle error

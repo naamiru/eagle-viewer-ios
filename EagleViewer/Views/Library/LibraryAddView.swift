@@ -95,7 +95,7 @@ struct LibraryAddView: View {
 
     private func createLibrary(name: String, bookmarkData: Data, useLocalStorage: Bool) async throws {
         // Create library
-        let newLibrary = try await repositories.library.create(name: name, bookmarkData: bookmarkData, useLocalStorage: useLocalStorage)
+        let newLibrary = try await repositories.library.create(name: name, source: .file(bookmarkData: bookmarkData), useLocalStorage: useLocalStorage)
 
         await MainActor.run {
             // Set the newly created library as active

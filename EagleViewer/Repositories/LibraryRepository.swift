@@ -15,10 +15,12 @@ struct LibraryRepository {
         self.dbWriter = dbWriter
     }
 
-    func create(name: String, bookmarkData: Data, useLocalStorage: Bool) async throws -> Library {
+    func create(name: String, source: LibrarySource, useLocalStorage: Bool) async throws -> Library {
         try await dbWriter.write { db in
             let maxSortOrder = try Int.fetchOne(db, sql: "SELECT COALESCE(MAX(sortOrder), -1) FROM library") ?? -1
-            let library = try NewLibrary(name: name, bookmarkData: bookmarkData, sortOrder: maxSortOrder + 1, useLocalStorage: useLocalStorage).insertAndFetch(db, as: Library.self)
+            var newLibrary = NewLibrary(name: name, sourceData: Data(), sortOrder: maxSortOrder + 1, useLocalStorage: useLocalStorage)
+            newLibrary.source = source
+            let library = try newLibrary.insertAndFetch(db, as: Library.self)
             return library
         }
     }
@@ -50,21 +52,24 @@ struct LibraryRepository {
         }
     }
 
-    func updateFolder(id: Int64, name: String, bookmarkData: Data) async throws {
+    func updateFolder(id: Int64, name: String, source: LibrarySource) async throws {
         try await dbWriter.write { db in
-            // Fetch current library to check if bookmarkData changed
-            guard let currentLibrary = try Library.fetchOne(db, id: id) else {
+            // Fetch current library to check if source changed
+            guard var currentLibrary = try Library.fetchOne(db, id: id) else {
                 return
             }
-            
-            // Skip update if bookmarkData is unchanged
-            if currentLibrary.bookmarkData == bookmarkData {
+
+            // Skip update if source is unchanged
+            if currentLibrary.source == source {
                 return
             }
-            
+
+            // Update the source
+            currentLibrary.source = source
+
             _ = try Library.filter(Column("id") == id).updateAll(db, [
                 Column("name").set(to: name),
-                Column("bookmarkData").set(to: bookmarkData),
+                Column("sourceData").set(to: currentLibrary.sourceData),
                 Column("lastImportedFolderMTime").set(to: 0),
                 Column("lastImportedItemMTime").set(to: 0)
             ])

@@ -11,7 +11,7 @@ private struct LibraryEnvironmentKey: EnvironmentKey {
     static let defaultValue: Library = Library(
         id: 0,
         name: "",
-        bookmarkData: Data(),
+        sourceData: Data(),
         sortOrder: 0,
         lastImportedFolderMTime: 0,
         lastImportedItemMTime: 0,

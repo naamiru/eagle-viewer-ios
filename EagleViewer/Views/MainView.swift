@@ -85,7 +85,7 @@ struct MainView: View {
         .onChange(of: library, initial: true) { oldLibrary, newLibrary in
             if oldLibrary.id != newLibrary.id // library changed
                 || oldLibrary == newLibrary // inital call
-                || oldLibrary.bookmarkData != newLibrary.bookmarkData // folder changed
+                || oldLibrary.sourceData != newLibrary.sourceData // folder changed
             {
                 // automatic import
 

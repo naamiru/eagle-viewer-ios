@@ -106,7 +106,7 @@ struct FirstLaunchInfoView: View {
     }
 
     private func createLibrary(name: String, bookmarkData: Data, useLocalStorage: Bool) async throws {
-        let newLibrary = try await repositories.library.create(name: name, bookmarkData: bookmarkData, useLocalStorage: useLocalStorage)
+        let newLibrary = try await repositories.library.create(name: name, source: .file(bookmarkData: bookmarkData), useLocalStorage: useLocalStorage)
 
         await MainActor.run {
             settingsManager.setActiveLibrary(id: newLibrary.id)

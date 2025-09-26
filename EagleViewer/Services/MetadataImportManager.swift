@@ -45,9 +45,13 @@ class MetadataImportManager: ObservableObject {
                 localURL = try? LocalImageStorageManager.shared.getLocalStorageURL(for: library.id)
                 
                 // Temporarily access Eagle library for import
+                guard case .file(let bookmarkData) = library.source else {
+                    throw LibraryFolderError.accessDenied
+                }
+
                 var isStale = false
                 libraryURL = try URL(
-                    resolvingBookmarkData: library.bookmarkData,
+                    resolvingBookmarkData: bookmarkData,
                     options: [],
                     relativeTo: nil,
                     bookmarkDataIsStale: &isStale
