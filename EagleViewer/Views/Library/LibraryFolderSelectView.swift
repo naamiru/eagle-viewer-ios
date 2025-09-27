@@ -35,10 +35,21 @@ enum LibrarySelectionError: LocalizedError {
     }
 }
 
+struct GoogleUserWrapper: Identifiable {
+    let id: String
+    let user: GIDGoogleUser
+
+    init(_ user: GIDGoogleUser) {
+        self.user = user
+        self.id = user.userID ?? UUID().uuidString
+    }
+}
+
 struct LibraryFolderSelectView: View {
     let onSelect: (String, Data) -> Void
     
     @State private var showingFilePicker = false
+    @State private var googleDriveUser: GoogleUserWrapper?
     @State private var error: Error?
     @State private var showingErrorAlert = false
     @State private var isProcessing = false
@@ -181,6 +192,12 @@ struct LibraryFolderSelectView: View {
                 showError(error)
             }
         }
+        .sheet(item: $googleDriveUser) { user in
+            GoogleDriveFolderPickerView(googleUser: user.user) { fileId in
+                print(fileId)
+                googleDriveUser = nil
+            }
+        }
     }
     
     private func showError(_ error: Error) {
@@ -191,11 +208,10 @@ struct LibraryFolderSelectView: View {
     
     private func showGoogleDrive() {
         Task {
-            do {
-                let user = try await GoogleAuthManager.ensureSignedIn()
-                print(user.profile?.name)
-            } catch {
-                Logger.app.debug("Fail to signed in Google")
+            if let user = try? await GoogleAuthManager.ensureSignedIn() {
+                googleDriveUser = GoogleUserWrapper(user)
+            } else {
+                googleDriveUser = nil
             }
         }
     }
