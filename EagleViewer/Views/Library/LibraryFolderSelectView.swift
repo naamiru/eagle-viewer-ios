@@ -5,6 +5,7 @@
 //  Created on 2025/08/23
 //
 
+import GoogleAPIClientForREST_Drive
 import GoogleSignIn
 import OSLog
 import SwiftUI
@@ -46,7 +47,7 @@ struct GoogleUserWrapper: Identifiable {
 }
 
 struct LibraryFolderSelectView: View {
-    let onSelect: (String, Data) -> Void
+    let onSelect: (String, LibrarySource) -> Void
     
     @State private var showingFilePicker = false
     @State private var googleDriveUser: GoogleUserWrapper?
@@ -202,10 +203,9 @@ struct LibraryFolderSelectView: View {
             }
         }
         .sheet(item: $googleDriveUser) { user in
-            GoogleDriveFolderPickerView(googleUser: user.user) { fileId in
-                print(fileId)
+            GoogleDriveFolderPickerView(googleUser: user.user) { libraryName, fileId in
+                handleGoogleDriveSelection(user: user.user, libraryName: libraryName, fileId: fileId)
                 googleDriveUser = nil
-                isProcessingGdrive = true
             }
         }
     }
@@ -227,6 +227,29 @@ struct LibraryFolderSelectView: View {
         }
     }
     
+    private func handleGoogleDriveSelection(user: GIDGoogleUser, libraryName: String, fileId: String) {
+        isProcessingGdrive = true
+        selectionTask?.cancel()
+        selectionTask = Task {
+            do {
+                try await LibraryValidator.validateMetadata(user: user, fileId: fileId)
+                await MainActor.run {
+                    onSelect(libraryName, .gdrive(fileId: fileId))
+                    isProcessingGdrive = false
+                    selectionTask = nil
+                }
+            } catch {
+                guard !Task.isCancelled else { return }
+                
+                await MainActor.run {
+                    showError(error)
+                    isProcessingGdrive = false
+                    selectionTask = nil
+                }
+            }
+        }
+    }
+    
     private func handleFolderSelection(_ url: URL) {
         isProcessingFile = true
         
@@ -238,7 +261,7 @@ struct LibraryFolderSelectView: View {
                 guard !Task.isCancelled else { return }
 
                 await MainActor.run {
-                    onSelect(name, bookmarkData)
+                    onSelect(name, .file(bookmarkData: bookmarkData))
                     isProcessingFile = false
                     selectionTask = nil
                 }
@@ -353,8 +376,132 @@ struct LocationItem: View {
     }
 }
 
-#Preview {
-    LibraryFolderSelectView { name, bookmarkData in
-        Logger.app.debug("Selected library '\(name)' with \(bookmarkData.count) bytes of bookmark data")
+enum LibraryValidator {
+    static func validateMetadata(_ data: Data) throws {
+        // Parse metadata to check version
+        struct MetadataVersion: Decodable {
+            let applicationVersion: String?
+        }
+        
+        let decoder = JSONDecoder()
+        let metadata = try decoder.decode(MetadataVersion.self, from: data)
+        
+        // Check if applicationVersion exists and starts with "4."
+        if let version = metadata.applicationVersion {
+            guard version.hasPrefix("4.") else {
+                throw LibrarySelectionError.unsupportedVersion(version)
+            }
+        } else {
+            throw LibrarySelectionError.versionNotFound
+        }
+    }
+    
+    static func validateMetadata(user: GIDGoogleUser, fileId: String) async throws {
+        let service = GTLRDriveService()
+        service.authorizer = user.fetcherAuthorizer
+        let metadata = try await getMetadata(service: service, folderId: fileId)
+        try validateMetadata(metadata)
+    }
+    
+    private static func getMetadata(service: GTLRDriveService, folderId: String) async throws -> Data {
+        let fileId = try await getChildFileId(service: service, folderId: folderId, fileName: "metadata.json")
+        return try await getFileData(service: service, fileId: fileId)
+    }
+    
+    private static func getChildFileId(service: GTLRDriveService, folderId: String, fileName: String) async throws -> String {
+        let query = GTLRDriveQuery_FilesList.query()
+        query.q = """
+            '\(folderId)' in parents \
+            and name = '\(fileName)' \
+            and trashed = false \
+            and mimeType != 'application/vnd.google-apps.folder'
+        """
+        query.spaces = "drive"
+        query.pageSize = 1
+        query.fields = "files(id)"
+        
+        return try await withCheckedThrowingContinuation { cont in
+            service.executeQuery(query) { _, result, error in
+                if let error { return cont.resume(throwing: error) }
+                guard
+                    let list = result as? GTLRDrive_FileList,
+                    let file = list.files?.first,
+                    let id = file.identifier
+                else {
+                    return cont.resume(throwing: LibrarySelectionError.metadataNotFound)
+                }
+                cont.resume(returning: id)
+            }
+        }
+    }
+    
+    private static func getFileData(service: GTLRDriveService, fileId: String) async throws -> Data {
+        let query = GTLRDriveQuery_FilesGet.queryForMedia(withFileId: fileId)
+        
+        return try await withCheckedThrowingContinuation { cont in
+            service.executeQuery(query) { _, result, error in
+                if let error { return cont.resume(throwing: error) }
+                guard let dataObj = result as? GTLRDataObject else {
+                    return cont.resume(throwing: LibrarySelectionError.metadataNotFound)
+                }
+                cont.resume(returning: dataObj.data)
+            }
+        }
+    }
+    
+    private func getLibraryInfo(_ url: URL) async throws -> (name: String, bookmarkData: Data) {
+        // Validate folder name ends with .library
+        let folderName = url.lastPathComponent
+        guard folderName.hasSuffix(".library") else {
+            throw LibrarySelectionError.invalidFolderName
+        }
+        
+        guard url.startAccessingSecurityScopedResource() else {
+            throw LibrarySelectionError.accessDenied
+        }
+        defer { url.stopAccessingSecurityScopedResource() }
+        
+        // Check Eagle version from metadata.json
+        let metadataUrl = url.appending(path: "metadata.json", directoryHint: .notDirectory)
+        
+        // Check file existence
+        guard FileManager.default.fileExists(atPath: metadataUrl.path) else {
+            throw LibrarySelectionError.metadataNotFound
+        }
+        
+        // Read metadata using URLSession
+        let (metadataData, _) = try await URLSession.shared.data(from: metadataUrl)
+        
+        // Parse metadata to check version
+        struct MetadataVersion: Decodable {
+            let applicationVersion: String?
+        }
+        
+        let decoder = JSONDecoder()
+        let metadata = try decoder.decode(MetadataVersion.self, from: metadataData)
+        
+        // Check if applicationVersion exists and starts with "4."
+        if let version = metadata.applicationVersion {
+            guard version.hasPrefix("4.") else {
+                throw LibrarySelectionError.unsupportedVersion(version)
+            }
+        } else {
+            throw LibrarySelectionError.versionNotFound
+        }
+        
+        let bookmarkData = try url.bookmarkData(
+            options: [],
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil
+        )
+        
+        // Extract library name from the URL
+        let libraryName = String(url.lastPathComponent.dropLast(8)) // Remove .library extension
+        
+        guard !libraryName.isEmpty else {
+            throw LibrarySelectionError.emptyLibraryName
+        }
+        
+        return (name: libraryName, bookmarkData: bookmarkData)
     }
 }

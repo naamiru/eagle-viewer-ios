@@ -67,7 +67,6 @@ final class GoogleDriveClient {
                         mime = targetMime
                         // keep the shortcut’s name
                     }
-                    print(f)
                     return GoogleDriveItem(
                         id: id,
                         name: f.name ?? "",
@@ -89,13 +88,13 @@ final class GoogleDriveClient {
 // MARK: - SwiftUI View
 
 struct GoogleDriveFolderPickerView: View {
-    let onSelect: (String) -> Void // Returns the folderId
+    let onSelect: (String, String) -> Void // Returns the (libraryName, folderId)
     @State private var client: GoogleDriveClient
     @State private var path: [GoogleDriveItem] = []
 
     private let rootFolder = GoogleDriveItem(id: "root", name: String(localized: "My Drive"), mimeType: GoogleDriveItem.folderMimeType, modifiedTime: nil)
 
-    init(googleUser: GIDGoogleUser, onSelect: @escaping (String) -> Void) {
+    init(googleUser: GIDGoogleUser, onSelect: @escaping (String, String) -> Void) {
         self.onSelect = onSelect
         _client = State(initialValue: GoogleDriveClient(googleUser: googleUser))
     }
@@ -119,7 +118,7 @@ struct GoogleDriveFolderPickerView: View {
 private struct FolderContentView: View {
     let client: GoogleDriveClient
     let folder: GoogleDriveItem
-    let onSelect: (String) -> Void
+    let onSelect: (String, String) -> Void
 
     @State private var isLoading = false
     @State private var entries: [GoogleDriveItem] = []
@@ -206,7 +205,11 @@ private struct FolderContentView: View {
         .toolbar {
             ToolbarItem(id: "open-toolbar-item", placement: .topBarTrailing) {
                 Button("Open", role: canSelect ? .confirm : nil) {
-                    onSelect(folder.id)
+                    var libraryName = folder.name
+                    if libraryName.hasSuffix(".library") {
+                        libraryName = String(libraryName.dropLast(".library".count))
+                    }
+                    onSelect(libraryName, folder.id)
                     dismiss()
                 }
                 .disabled(!canSelect)

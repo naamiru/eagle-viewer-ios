@@ -52,7 +52,7 @@ struct LibraryRepository {
         }
     }
 
-    func updateFolder(id: Int64, name: String, source: LibrarySource) async throws {
+    func updateSource(id: Int64, name: String, source: LibrarySource) async throws {
         try await dbWriter.write { db in
             // Fetch current library to check if source changed
             guard var currentLibrary = try Library.fetchOne(db, id: id) else {

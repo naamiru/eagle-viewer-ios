@@ -15,7 +15,7 @@ struct LibraryAddView: View {
     }
 
     @State private var libraryName: String?
-    @State private var libraryBookmarkData: Data?
+    @State private var librarySource: LibrarySource?
     @State private var useLocalStorage = true
 
     @State private var isLoading = false
@@ -41,15 +41,21 @@ struct LibraryAddView: View {
                     footer: Text("Recommended for slow external storage or network drives."),
                     content: {
                         Toggle("Download images locally", isOn: $useLocalStorage)
+                            .disabled(isCloudSource)
                     }
                 )
             }
             .navigationDestination(for: Destination.self) { destination in
                 switch destination {
                 case .folderSelect:
-                    LibraryFolderSelectView { name, bookmarkData in
+                    LibraryFolderSelectView { name, source in
                         self.libraryName = name
-                        self.libraryBookmarkData = bookmarkData
+                        self.librarySource = source
+
+                        if case .gdrive = source {
+                            self.useLocalStorage = true
+                        }
+
                         // Pop back to root
                         path = NavigationPath()
                     }
@@ -70,7 +76,7 @@ struct LibraryAddView: View {
                             isLoading = true
                             Task {
                                 do {
-                                    try await createLibrary(name: data.name, bookmarkData: data.bookmarkData, useLocalStorage: data.useLocalStorage)
+                                    try await createLibrary(name: data.name, source: data.source, useLocalStorage: data.useLocalStorage)
                                 } catch {
                                     Logger.app.error("Failed to create library: \(error)")
                                 }
@@ -86,16 +92,27 @@ struct LibraryAddView: View {
         }
     }
 
-    private var validFormData: (name: String, bookmarkData: Data, useLocalStorage: Bool)? {
-        guard let libraryName, let libraryBookmarkData else {
+    private var validFormData: (name: String, source: LibrarySource, useLocalStorage: Bool)? {
+        guard let libraryName, let librarySource else {
             return nil
         }
-        return (libraryName, libraryBookmarkData, useLocalStorage)
+        return (libraryName, librarySource, useLocalStorage)
     }
 
-    private func createLibrary(name: String, bookmarkData: Data, useLocalStorage: Bool) async throws {
+    private var isCloudSource: Bool {
+        if case .file = librarySource {
+            return false
+        }
+        return true
+    }
+
+    private func createLibrary(name: String, source: LibrarySource, useLocalStorage: Bool) async throws {
         // Create library
-        let newLibrary = try await repositories.library.create(name: name, source: .file(bookmarkData: bookmarkData), useLocalStorage: useLocalStorage)
+        let newLibrary = try await repositories.library.create(
+            name: name,
+            source: source,
+            useLocalStorage: isCloudSource ? true : useLocalStorage
+        )
 
         await MainActor.run {
             // Set the newly created library as active

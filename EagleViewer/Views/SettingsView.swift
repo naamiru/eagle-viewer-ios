@@ -79,8 +79,8 @@ struct SettingsView: View {
             .navigationDestination(for: Destination.self) { destination in
                 switch destination {
                 case .folderSelect:
-                    LibraryFolderSelectView { name, bookmarkData in
-                        updateLibraryFolder(name: name, bookmarkData: bookmarkData)
+                    LibraryFolderSelectView { name, source in
+                        updateLibrarySource(name: name, source: source)
                     }
                 }
             }
@@ -110,10 +110,10 @@ struct SettingsView: View {
         }
     }
 
-    private func updateLibraryFolder(name: String, bookmarkData: Data) {
+    private func updateLibrarySource(name: String, source: LibrarySource) {
         Task {
             do {
-                try await repositories.library.updateFolder(id: library.id, name: name, source: .file(bookmarkData: bookmarkData))
+                try await repositories.library.updateSource(id: library.id, name: name, source: source)
                 path = NavigationPath()
             } catch {
                 // Handle error
