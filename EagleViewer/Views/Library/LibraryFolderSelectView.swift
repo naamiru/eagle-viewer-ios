@@ -52,7 +52,8 @@ struct LibraryFolderSelectView: View {
     @State private var googleDriveUser: GoogleUserWrapper?
     @State private var error: Error?
     @State private var showingErrorAlert = false
-    @State private var isProcessing = false
+    @State private var isProcessingFile = false
+    @State private var isProcessingGdrive = false
     @State private var selectionTask: Task<Void, Never>?
     
     var body: some View {
@@ -110,13 +111,13 @@ struct LibraryFolderSelectView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .cornerRadius(16)
+                    .cornerRadius(10)
                     .shadow(color: Color.blue.opacity(0.08), radius: 10, x: 0, y: 4)
                     
                     Button(action: {
                         showingFilePicker = true
                     }) {
-                        if isProcessing {
+                        if isProcessingFile {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle())
                                 .scaleEffect(0.8)
@@ -125,12 +126,11 @@ struct LibraryFolderSelectView: View {
                         } else {
                             Text("Select from Files app")
                                 .frame(maxWidth: .infinity)
-                                .frame(height: 22) // Consistent height
                         }
                     }
-                    .buttonStyle(.borderedProminent)
                     .controlSize(.large)
-                    .disabled(isProcessing)
+                    .buttonStyle(.glassProminent)
+                    .disabled(isProcessingFile || isProcessingGdrive)
                 }
                 
                 VStack(alignment: .leading, spacing: 20) {
@@ -146,22 +146,31 @@ struct LibraryFolderSelectView: View {
                                 .aspectRatio(1, contentMode: .fit)
                                 .frame(width: 22)
                             Spacer()
-                            Text("Google Drive")
-                                .foregroundColor(.primary)
+                            if isProcessingGdrive {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle())
+                                    .scaleEffect(0.8)
+                                    .frame(height: 22) // Match text height
+                                    .padding(.trailing, 22)
+                            } else {
+                                Text("Google Drive")
+                                    .padding(.trailing, 22)
+                            }
                             Spacer()
                         }
                         .padding(.horizontal)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(Color.white)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 25)
-                                .stroke(.secondary.opacity(0.5), lineWidth: 1)
-                        )
                     }
-                    .buttonStyle(.plain)
-                    .frame(maxWidth: .infinity)
-                    .disabled(isProcessing)
+                    .contextMenu {
+                        Button(role: .destructive, action: {
+                            GoogleAuthManager.signOut()
+                        }) {
+                            Label("Sign out", systemImage: "rectangle.portrait.and.arrow.forward")
+                        }
+                    }
+                    .controlSize(.large)
+                    .buttonStyle(.glass)
+                    .disabled(isProcessingFile || isProcessingGdrive)
                 }
             }
             .padding(.horizontal)
@@ -169,7 +178,7 @@ struct LibraryFolderSelectView: View {
         .onDisappear {
             selectionTask?.cancel()
             selectionTask = nil
-            isProcessing = false
+            isProcessingFile = false
         }
         .alert("Error", isPresented: $showingErrorAlert, presenting: error) { _ in
             Button("OK") {
@@ -196,6 +205,7 @@ struct LibraryFolderSelectView: View {
             GoogleDriveFolderPickerView(googleUser: user.user) { fileId in
                 print(fileId)
                 googleDriveUser = nil
+                isProcessingGdrive = true
             }
         }
     }
@@ -203,7 +213,8 @@ struct LibraryFolderSelectView: View {
     private func showError(_ error: Error) {
         self.error = error
         showingErrorAlert = true
-        isProcessing = false
+        isProcessingFile = false
+        isProcessingGdrive = false
     }
     
     private func showGoogleDrive() {
@@ -217,7 +228,7 @@ struct LibraryFolderSelectView: View {
     }
     
     private func handleFolderSelection(_ url: URL) {
-        isProcessing = true
+        isProcessingFile = true
         
         selectionTask?.cancel()
         selectionTask = Task {
@@ -228,7 +239,7 @@ struct LibraryFolderSelectView: View {
 
                 await MainActor.run {
                     onSelect(name, bookmarkData)
-                    isProcessing = false
+                    isProcessingFile = false
                     selectionTask = nil
                 }
             } catch {
@@ -236,7 +247,7 @@ struct LibraryFolderSelectView: View {
                 
                 await MainActor.run {
                     showError(error)
-                    isProcessing = false
+                    isProcessingFile = false
                     selectionTask = nil
                 }
             }

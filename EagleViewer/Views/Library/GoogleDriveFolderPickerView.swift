@@ -12,10 +12,14 @@ import SwiftUI
 // MARK: - Model
 
 struct GoogleDriveItem: Identifiable, Hashable {
+    static let folderMimeType = "application/vnd.google-apps.folder"
+    static let shortcutMimeType = "application/vnd.google-apps.shortcut"
+
     let id: String
     let name: String
     let mimeType: String
-    var isFolder: Bool { mimeType == "application/vnd.google-apps.folder" }
+    let modifiedTime: Date?
+    var isFolder: Bool { mimeType == Self.folderMimeType }
 }
 
 // MARK: - Drive Client (My Drive only)
@@ -35,7 +39,7 @@ final class GoogleDriveClient {
         let query = GTLRDriveQuery_FilesList.query()
         query.spaces = "drive" // My Drive only
         query.q = "'\(folderId)' in parents and trashed = false"
-        query.fields = "files(id,name,mimeType,shortcutDetails),nextPageToken"
+        query.fields = "files(id,name,mimeType,shortcutDetails,modifiedTime),nextPageToken"
         query.orderBy = "folder,name"
         query.pageSize = 200
 
@@ -55,8 +59,7 @@ final class GoogleDriveClient {
                 let items: [GoogleDriveItem] = files.compactMap { f in
                     var id = f.identifier ?? ""
                     var mime = f.mimeType ?? ""
-                    let name = f.name ?? ""
-                    if mime == "application/vnd.google-apps.shortcut",
+                    if mime == GoogleDriveItem.shortcutMimeType,
                        let targetId = f.shortcutDetails?.targetId,
                        let targetMime = f.shortcutDetails?.targetMimeType
                     {
@@ -64,7 +67,13 @@ final class GoogleDriveClient {
                         mime = targetMime
                         // keep the shortcut’s name
                     }
-                    return GoogleDriveItem(id: id, name: name, mimeType: mime)
+                    print(f)
+                    return GoogleDriveItem(
+                        id: id,
+                        name: f.name ?? "",
+                        mimeType: mime,
+                        modifiedTime: f.modifiedTime?.date
+                    )
                 }
                 // Ensure folders first, then files, both sorted by name
                 let sorted = items.sorted {
@@ -84,7 +93,7 @@ struct GoogleDriveFolderPickerView: View {
     @State private var client: GoogleDriveClient
     @State private var path: [GoogleDriveItem] = []
 
-    private let rootFolder = GoogleDriveItem(id: "root", name: "My Drive", mimeType: "application/vnd.google-apps.folder")
+    private let rootFolder = GoogleDriveItem(id: "root", name: String(localized: "My Drive"), mimeType: GoogleDriveItem.folderMimeType, modifiedTime: nil)
 
     init(googleUser: GIDGoogleUser, onSelect: @escaping (String) -> Void) {
         self.onSelect = onSelect
@@ -121,7 +130,13 @@ private struct FolderContentView: View {
     var body: some View {
         Group {
             if isLoading && entries.isEmpty {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                VStack(spacing: 6) {
+                    ProgressView()
+                    Text("LOADING")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             } else if let errorMessage, entries.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "exclamationmark.triangle")
@@ -131,21 +146,12 @@ private struct FolderContentView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 .padding()
             } else if entries.isEmpty {
-                // Empty folder display
-                HStack {
-                    Spacer()
-                    VStack(spacing: 16) {
-                        Image(systemName: "document")
-                            .font(.system(size: 60))
-                            .foregroundColor(.secondary)
-
-                        Text("No Items")
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
+                VStack {
+                    Text("No Items")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
-                .frame(minHeight: 200)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             } else {
                 List {
                     ForEach(entries) { item in
@@ -153,26 +159,45 @@ private struct FolderContentView: View {
                             NavigationLink(value: item) {
                                 HStack(spacing: 12) {
                                     Image(systemName: "folder.fill")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 32, height: 32)
                                         .foregroundStyle(.blue)
-                                    Text(item.name)
-                                        .lineLimit(1)
-                                        .foregroundStyle(.primary)
+                                    VStack(alignment: .leading) {
+                                        Text(item.name)
+                                            .lineLimit(1)
+                                            .foregroundStyle(.primary)
+                                        if let modifiedTime = item.modifiedTime {
+                                            Text(modifiedTime.smartString())
+                                                .font(.footnote)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
                                 }
                                 .contentShape(Rectangle())
                             }
                         } else {
                             HStack(spacing: 12) {
                                 Image(systemName: "document")
-                                    .foregroundStyle(.secondary)
-                                Text(item.name)
-                                    .lineLimit(1)
-                                    .foregroundStyle(.secondary)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 32, height: 32)
+                                    .foregroundStyle(.tertiary)
+                                VStack(alignment: .leading) {
+                                    Text(item.name)
+                                        .lineLimit(1)
+                                        .foregroundStyle(.secondary)
+                                    if let modifiedTime = item.modifiedTime {
+                                        Text(modifiedTime.smartString())
+                                            .font(.footnote)
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                }
                             }
                             .contentShape(Rectangle())
                         }
                     }
                 }
-                .refreshable { await load() }
             }
         }
         .navigationTitle(folder.name)

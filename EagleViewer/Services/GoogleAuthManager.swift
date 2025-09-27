@@ -66,4 +66,8 @@ enum GoogleAuthManager {
             }
         }
     }
+
+    static func signOut() {
+        GIDSignIn.sharedInstance.signOut()
+    }
 }
