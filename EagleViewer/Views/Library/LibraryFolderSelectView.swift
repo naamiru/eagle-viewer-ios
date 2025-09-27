@@ -45,55 +45,62 @@ struct LibraryFolderSelectView: View {
     
     var body: some View {
         ScrollView {
-            VStack(spacing: 32) {
-                Text("Select your Eagle library folder")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    .padding(.top, 20)
+            VStack(spacing: 40) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Select your Eagle library folder")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 20)
+                    
+                    Text("Only folders ending with \".library\" can be selected")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 
                 VStack(alignment: .leading, spacing: 20) {
-                    Text("Your Eagle library folder must be accessible through the Files app")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Select from Files app")
+                        .fontWeight(.semibold)
                     
-                    Rectangle()
-                        .fill(Color.blue.opacity(0.1))
-                        .frame(height: 1)
-                    
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("Supported locations:")
-                            .font(.footnote)
-                            .fontWeight(.semibold)
+                    VStack(alignment: .leading, spacing: 20) {
+                        Text("Your Eagle library folder must be accessible through the Files app")
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
-                        
-                        VStack(alignment: .leading, spacing: 14) {
-                            LocationItem(icon: UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone",
-                                         title: UIDevice.current.userInterfaceIdiom == .pad ? String(localized: "On My iPad") : String(localized: "On My iPhone"),
-                                         description: String(localized: "Local storage on this device"))
-                            LocationItem(icon: "icloud", title: String(localized: "iCloud Drive"), description: String(localized: "Synced across your Apple devices"))
-                            LocationItem(icon: "externaldrive", title: String(localized: "External Storage"), description: String(localized: "Connected drives or network shares"))
+                            .fixedSize(horizontal: false, vertical: true)
+                                            
+                        Rectangle()
+                            .fill(Color.blue.opacity(0.1))
+                            .frame(height: 1)
+                                            
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Supported locations:")
+                                .font(.footnote)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.secondary)
+                                                
+                            VStack(alignment: .leading, spacing: 14) {
+                                LocationItem(icon: UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone",
+                                             title: UIDevice.current.userInterfaceIdiom == .pad ? String(localized: "On My iPad") : String(localized: "On My iPhone"),
+                                             description: String(localized: "Local storage on this device"))
+                                LocationItem(icon: "icloud", title: String(localized: "iCloud Drive"), description: String(localized: "Synced across your Apple devices"))
+                                LocationItem(icon: "externaldrive", title: String(localized: "External Storage"), description: String(localized: "Connected drives or network shares"))
+                            }
                         }
                     }
-                }
-                .padding(24)
-                .background(
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color.blue.opacity(0.06),
-                            Color.blue.opacity(0.10)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+                    .padding(24)
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.blue.opacity(0.06),
+                                Color.blue.opacity(0.10)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                )
-                .cornerRadius(16)
-                .shadow(color: Color.blue.opacity(0.08), radius: 10, x: 0, y: 4)
-                .padding(.horizontal)
-                
-                VStack(spacing: 16) {
+                    .cornerRadius(16)
+                    .shadow(color: Color.blue.opacity(0.08), radius: 10, x: 0, y: 4)
+                    
                     Button(action: {
                         showingFilePicker = true
                     }) {
@@ -104,7 +111,7 @@ struct LibraryFolderSelectView: View {
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 22) // Match text height
                         } else {
-                            Text("Browse for Eagle Library")
+                            Text("Select from Files app")
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 22) // Consistent height
                         }
@@ -112,16 +119,38 @@ struct LibraryFolderSelectView: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
                     .disabled(isProcessing)
-                    
-                    HStack(spacing: 4) {
-                        Text("Select a folder ending with \".library\"")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 40)
+                
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("Or choose a cloud service")
+                        .fontWeight(.semibold)
+                    
+                    Button(action: {}) {
+                        HStack {
+                            Image("GoogleDrive")
+                                .resizable()
+                                .aspectRatio(1, contentMode: .fit)
+                                .frame(width: 22)
+                            Spacer()
+                            Text("Google Drive")
+                                .foregroundColor(.primary)
+                            Spacer()
+                        }
+                        .padding(.horizontal)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Color.white)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 25)
+                                .stroke(.secondary.opacity(0.5), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
+                    .disabled(isProcessing)
+                }
             }
+            .padding(.horizontal)
         }
         .onDisappear {
             selectionTask?.cancel()
@@ -253,8 +282,8 @@ struct LocationItem: View {
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color.blue.opacity(0.10),
-                                Color.blue.opacity(0.15)
+                                Color.clear.opacity(0.10),
+                                Color.clear.opacity(0.15)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
