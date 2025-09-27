@@ -115,4 +115,4 @@ collections:
 # Markdown rendering
 markdown: kramdown
 
-baseurl: /eagle-viewer-ios
+baseurl: ""
