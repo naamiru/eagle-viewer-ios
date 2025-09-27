@@ -5,6 +5,7 @@
 //  Created on 2025/08/23
 //
 
+import GoogleSignIn
 import OSLog
 import SwiftUI
 
@@ -125,7 +126,9 @@ struct LibraryFolderSelectView: View {
                     Text("Or choose a cloud service")
                         .fontWeight(.semibold)
                     
-                    Button(action: {}) {
+                    Button(action: {
+                        showGoogleDrive()
+                    }) {
                         HStack {
                             Image("GoogleDrive")
                                 .resizable()
@@ -184,6 +187,20 @@ struct LibraryFolderSelectView: View {
         self.error = error
         showingErrorAlert = true
         isProcessing = false
+    }
+    
+    private func showGoogleDrive() {
+        guard let rootViewController = ViewControllerGetter.getRootViewController() else {
+            print("Can't get root view controller")
+            return
+        }
+        GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { result, _ in
+            guard let result else {
+                print("Can't login")
+                return
+            }
+            print(result.user.profile)
+        }
     }
     
     private func handleFolderSelection(_ url: URL) {
