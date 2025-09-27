@@ -190,16 +190,13 @@ struct LibraryFolderSelectView: View {
     }
     
     private func showGoogleDrive() {
-        guard let rootViewController = ViewControllerGetter.getRootViewController() else {
-            print("Can't get root view controller")
-            return
-        }
-        GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { result, _ in
-            guard let result else {
-                print("Can't login")
-                return
+        Task {
+            do {
+                let user = try await GoogleAuthManager.ensureSignedIn()
+                print(user.profile?.name)
+            } catch {
+                Logger.app.debug("Fail to signed in Google")
             }
-            print(result.user.profile)
         }
     }
     
