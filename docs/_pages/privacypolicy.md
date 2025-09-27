@@ -30,7 +30,15 @@ However, if you have chosen to share diagnostics and usage information with app 
 
 **4. Third-Party Services**
 
-The Application does not use any third-party services or advertising networks that could collect information about you.
+The Application supports optional integration with cloud storage services to access Eagle libraries stored in your cloud accounts:
+
+- Authentication is handled securely by each cloud provider using OAuth 2.0 or similar protocols
+- We never store your username or password
+- We request only the minimum permissions needed to read your Eagle library files
+- All data processing happens locally on your device
+- You can revoke access anytime through your cloud provider's settings or the Application
+
+The Application does not use any other third-party services or advertising networks that could collect information about you.
 
 **5. Children's Privacy**
 
@@ -38,7 +46,7 @@ We do not knowingly collect any personal information from children under the age
 
 **6. Changes to This Privacy Policy**
 
-We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page. You are advised to review this Privacy Policy periodically for any changes. Changes to this Privacy Policy are effective when they are posted on this page.
+We may update our Privacy Policy from time to time. You are advised to review this Privacy Policy periodically for any changes. Changes to this Privacy Policy are effective when they are posted on this page.
 
 **7. Contact Us**
 
