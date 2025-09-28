@@ -404,49 +404,8 @@ enum LibraryValidator {
     }
     
     private static func getMetadata(service: GTLRDriveService, folderId: String) async throws -> Data {
-        let fileId = try await getChildFileId(service: service, folderId: folderId, fileName: "metadata.json")
-        return try await getFileData(service: service, fileId: fileId)
-    }
-    
-    private static func getChildFileId(service: GTLRDriveService, folderId: String, fileName: String) async throws -> String {
-        let query = GTLRDriveQuery_FilesList.query()
-        query.q = """
-            '\(folderId)' in parents \
-            and name = '\(fileName)' \
-            and trashed = false \
-            and mimeType != 'application/vnd.google-apps.folder'
-        """
-        query.spaces = "drive"
-        query.pageSize = 1
-        query.fields = "files(id)"
-        
-        return try await withCheckedThrowingContinuation { cont in
-            service.executeQuery(query) { _, result, error in
-                if let error { return cont.resume(throwing: error) }
-                guard
-                    let list = result as? GTLRDrive_FileList,
-                    let file = list.files?.first,
-                    let id = file.identifier
-                else {
-                    return cont.resume(throwing: LibrarySelectionError.metadataNotFound)
-                }
-                cont.resume(returning: id)
-            }
-        }
-    }
-    
-    private static func getFileData(service: GTLRDriveService, fileId: String) async throws -> Data {
-        let query = GTLRDriveQuery_FilesGet.queryForMedia(withFileId: fileId)
-        
-        return try await withCheckedThrowingContinuation { cont in
-            service.executeQuery(query) { _, result, error in
-                if let error { return cont.resume(throwing: error) }
-                guard let dataObj = result as? GTLRDataObject else {
-                    return cont.resume(throwing: LibrarySelectionError.metadataNotFound)
-                }
-                cont.resume(returning: dataObj.data)
-            }
-        }
+        let fileId = try await GoogleDriveUtils.getChildFileId(service: service, folderId: folderId, fileName: "metadata.json")
+        return try await GoogleDriveUtils.getFileData(service: service, fileId: fileId)
     }
     
     private func getLibraryInfo(_ url: URL) async throws -> (name: String, bookmarkData: Data) {

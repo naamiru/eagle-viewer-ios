@@ -6,6 +6,8 @@
 //
 
 import Foundation
+import GoogleAPIClientForREST_Drive
+import GoogleSignIn
 import GRDB
 import OSLog
 import SwiftUI
@@ -14,7 +16,6 @@ class MetadataImportManager: ObservableObject {
     @Published var isImporting = false
     @Published var importProgress: Double = 0.0
     
-    private let metadataImporter = MetadataImporter()
     private var currentImportTask: Task<Void, Error>?
     
     func startImporting(
@@ -36,43 +37,65 @@ class MetadataImportManager: ObservableObject {
                 importProgress = 0.0
             }
             
-            var libraryURL: URL?
-            var localURL: URL?
-            
-            // Handle security-scoped resource for Eagle library access
-            if library.useLocalStorage {
-                // Get local storage URL for image copying
-                localURL = try? LocalImageStorageManager.shared.getLocalStorageURL(for: library.id)
-                
-                // Temporarily access Eagle library for import
-                guard case .file(let bookmarkData) = library.source else {
-                    throw LibraryFolderError.accessDenied
-                }
-
-                var isStale = false
-                libraryURL = try URL(
-                    resolvingBookmarkData: bookmarkData,
-                    options: [],
-                    relativeTo: nil,
-                    bookmarkDataIsStale: &isStale
-                )
-                
-                guard let libraryURL, libraryURL.startAccessingSecurityScopedResource() else {
-                    throw LibraryFolderError.accessDenied
-                }
-            } else {
-                // Use the already-active library URL from LibraryFolderManager
-                libraryURL = activeLibraryURL
-            }
-            
-            // Ensure security-scoped resource is released when task ends
+            // reset the importing state on main thread
             defer {
-                if localURL != nil, let libraryURL {
-                    libraryURL.stopAccessingSecurityScopedResource()
+                Task {
+                    await MainActor.run {
+                        isImporting = false
+                    }
                 }
             }
             
-            guard let libraryURL else {
+            let localURL: URL? = if library.useLocalStorage {
+                try LocalImageStorageManager.shared.getLocalStorageURL(for: library.id)
+            } else {
+                nil
+            }
+            
+            var source: MetadataImporter.Source?
+            
+            switch library.source {
+            case .file(let bookmarkData):
+                // Handle security-scoped resource for Eagle library access
+                if library.useLocalStorage {
+                    var isStale = false
+                    let libraryURL = try URL(
+                        resolvingBookmarkData: bookmarkData,
+                        options: [],
+                        relativeTo: nil,
+                        bookmarkDataIsStale: &isStale
+                    )
+                    
+                    guard libraryURL.startAccessingSecurityScopedResource() else {
+                        throw LibraryFolderError.accessDenied
+                    }
+                    
+                    source = .url(url: libraryURL)
+                } else {
+                    // Use the already-active library URL from LibraryFolderManager
+                    guard let activeLibraryURL else {
+                        return
+                    }
+                    source = .url(url: activeLibraryURL)
+                }
+            case .gdrive(let fileId):
+                let user = try await GoogleAuthManager.ensureSignedIn()
+                
+                let service = GTLRDriveService()
+                service.authorizer = user.fetcherAuthorizer
+                service.shouldFetchNextPages = true
+                
+                source = .gdrive(service: service, fileId: fileId)
+            }
+            
+            // Ensure security-scoped resource is released when task of local library ends
+            defer {
+                if localURL != nil, case .url(let url) = source {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+            
+            guard let source else {
                 return
             }
             
@@ -92,11 +115,6 @@ class MetadataImportManager: ObservableObject {
                     } catch {
                         Logger.app.warning("Failed to update import status: \(error)")
                     }
-                    
-                    // Then reset the importing state on main thread
-                    await MainActor.run {
-                        isImporting = false
-                    }
                 }
             }
             
@@ -115,10 +133,10 @@ class MetadataImportManager: ObservableObject {
                 }
                 
                 // Import all metadata (folders and items) with optional local storage
-                try await metadataImporter.importAll(
+                let metadataImporter = MetadataImporter(
                     dbWriter: dbWriter,
                     libraryId: library.id,
-                    libraryUrl: libraryURL,
+                    source: source,
                     localUrl: localURL, // Pass local URL for image copying if useLocalStorage
                     progressHandler: { progress in
                         await MainActor.run {
@@ -126,6 +144,7 @@ class MetadataImportManager: ObservableObject {
                         }
                     }
                 )
+                try await metadataImporter.importAll()
                 
                 importStatus = .success
             } catch {

@@ -41,7 +41,7 @@ final class GoogleDriveClient {
         query.q = "'\(folderId)' in parents and trashed = false"
         query.fields = "files(id,name,mimeType,shortcutDetails,modifiedTime),nextPageToken"
         query.orderBy = "folder,name"
-        query.pageSize = 200
+        query.pageSize = 1000
 
         return try await withCheckedThrowingContinuation { cont in
             service.executeQuery(query) { _, result, error in
