@@ -18,9 +18,15 @@ We are committed to protecting your privacy. We understand the importance of you
 
 We do not collect, store, transmit, or have access to any personal information or personally identifiable data from our users. All data, files, and libraries that you open or manage with the Application are processed locally on your device. The data remains under your control and is never sent to us or any third party.
 
-**2. Permissions**
+**2. Permissions and Access to Files**
 
-The Application may request permission to access your files and folders (via the Files app or iCloud Drive). This permission is required solely for the app's core functionality, which is to allow you to open and view your libraries. We do not use this permission to access your data for any other purpose, and we do not collect or store any of your files.
+The Application may request permission to access your files and folders (via the Files app, iCloud Drive, or Google Drive). This permission is required solely for the app's core functionality, which is to allow you to open and view your libraries. We do not use this permission to access your data for any other purpose, and we do not collect or store any of your files.
+
+When you connect your Google account, the Application may request the **Google Drive `drive.readonly` scope**.
+
+- This scope allows the Application to view the metadata and content of files and folders in your Google Drive.
+- Access is limited to the files or folders that you explicitly select within the Application.
+- All accessed data is processed locally on your device and is never transmitted to our servers or shared with third parties.
 
 **3. Analytics and Crash Reports**
 
@@ -31,6 +37,9 @@ However, if you have chosen to share diagnostics and usage information with app 
 **4. Third-Party Services**
 
 The Application does not use any third-party services or advertising networks that could collect information about you.
+
+As an exception, the Application may use **Google APIs** to enable optional integration with Google Drive.  
+Our use and transfer of information received from Google APIs will adhere to the [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy), including the **Limited Use requirements**.
 
 **5. Children's Privacy**
 

@@ -67,6 +67,17 @@ enum GoogleAuthManager {
         }
     }
 
+    static func isSignedIn() async -> Bool {
+        if GIDSignIn.sharedInstance.currentUser != nil {
+            return true
+        }
+        return await withCheckedContinuation { continuation in
+            GIDSignIn.sharedInstance.restorePreviousSignIn { user, _ in
+                continuation.resume(returning: user != nil)
+            }
+        }
+    }
+
     static func signOut() {
         GIDSignIn.sharedInstance.signOut()
     }

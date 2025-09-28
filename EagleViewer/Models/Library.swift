@@ -12,7 +12,8 @@ enum LibrarySource: Codable, Equatable {
     case file(bookmarkData: Data)
     case gdrive(fileId: String)
 
-    private enum Kind: String, Codable { case file, gdrive }
+    enum Kind: String, Codable { case file, gdrive }
+
     private struct Box: Codable {
         let kind: Kind
         let bookmarkData: Data?
