@@ -47,7 +47,6 @@ struct FirstLaunchInfoView: View {
                     .font(.title2)
                     .fontWeight(.semibold)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
                     .padding(.top, 20)
 
                 VStack(alignment: .leading, spacing: 12) {
@@ -63,7 +62,6 @@ struct FirstLaunchInfoView: View {
 
                     Divider()
                 }
-                .padding(.horizontal)
 
                 Spacer(minLength: 12)
 
@@ -83,23 +81,21 @@ struct FirstLaunchInfoView: View {
                     if isLoading {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle())
+                            .scaleEffect(0.8)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 50)
+                            .frame(height: 22) // Match text height
                     } else {
                         Text("Import Library")
-                            .font(.headline)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(Color.accentColor)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
                     }
                 }
+                .buttonStyle(.glassProminent)
+                .controlSize(.large)
                 .disabled(isLoading)
-                .padding(.horizontal)
 
                 Spacer(minLength: 40)
             }
+            .padding(.horizontal)
         }
         .navigationTitle("Library Setup")
         .navigationBarTitleDisplayMode(.inline)
