@@ -51,7 +51,7 @@ class LibraryFolderManager: ObservableObject {
         if library.useLocalStorage {
             // Stop access to previous library if any
             discardAccess()
-            
+
             // For local storage, set virtual URL without security-scoped access
             do {
                 let localURL = try LocalImageStorageManager.shared.getLocalStorageURL(for: library.id)
@@ -64,16 +64,21 @@ class LibraryFolderManager: ObservableObject {
                 accessState = .closed
             }
         } else {
-            // Skip if same library bookmark
-            if currentBookmarkData == library.bookmarkData {
+            // Only handle .file source for now
+            guard case .file(let bookmarkData) = library.source else {
                 return
             }
-            
+
+            // Skip if same library bookmark
+            if currentBookmarkData == bookmarkData {
+                return
+            }
+
             // Stop access to previous library if any
             discardAccess()
-            
+
             // security-scoped access to Eagle library
-            currentBookmarkData = library.bookmarkData
+            currentBookmarkData = bookmarkData
             startAccess()
         }
     }

@@ -15,10 +15,20 @@ struct FirstLaunchView: View {
 
     @State var path: [Destination] = []
 
+    @Environment(\.repositories) private var repositories
+    @EnvironmentObject private var settingsManager: SettingsManager
+
     var body: some View {
         NavigationStack(path: $path) {
-            LibraryFolderSelectView { name, data in
-                path.append(.option(name, data))
+            LibraryFolderSelectView { name, source in
+                switch source {
+                case .file(let bookmarkData):
+                    path.append(.option(name, bookmarkData))
+                case .gdrive:
+                    Task {
+                        try? await createCloudLibrary(name: name, source: source)
+                    }
+                }
             }
             .navigationDestination(for: Destination.self) { destination in
                 switch destination {
@@ -26,6 +36,14 @@ struct FirstLaunchView: View {
                     FirstLaunchInfoView(libraryName: name, bookmarkData: data)
                 }
             }
+        }
+    }
+
+    private func createCloudLibrary(name: String, source: LibrarySource) async throws {
+        let newLibrary = try await repositories.library.create(name: name, source: source, useLocalStorage: true)
+
+        await MainActor.run {
+            settingsManager.setActiveLibrary(id: newLibrary.id)
         }
     }
 }
@@ -106,7 +124,7 @@ struct FirstLaunchInfoView: View {
     }
 
     private func createLibrary(name: String, bookmarkData: Data, useLocalStorage: Bool) async throws {
-        let newLibrary = try await repositories.library.create(name: name, bookmarkData: bookmarkData, useLocalStorage: useLocalStorage)
+        let newLibrary = try await repositories.library.create(name: name, source: .file(bookmarkData: bookmarkData), useLocalStorage: useLocalStorage)
 
         await MainActor.run {
             settingsManager.setActiveLibrary(id: newLibrary.id)

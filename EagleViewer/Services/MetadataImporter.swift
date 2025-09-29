@@ -6,33 +6,14 @@
 //
 
 import Foundation
+import GoogleAPIClientForREST_Drive
 import GRDB
 import OSLog
 
 struct MetadataImporter {
-    /// Converts a title to Eagle's special sort format
-    /// Extracts digit sequences and replaces them with left zero-padded 19-character values
-    private func nameForSort(from name: String) -> String {
-        let regex = try! NSRegularExpression(pattern: "\\d+", options: [])
-        let nsString = name as NSString
-        let matches = regex.matches(in: name, options: [], range: NSRange(location: 0, length: nsString.length))
-        
-        var result = name
-        var offset = 0
-        
-        for match in matches {
-            let range = NSRange(location: match.range.location + offset, length: match.range.length)
-            let matchedString = (result as NSString).substring(with: range)
-            
-            // Convert to integer and back to get clean number
-            if let number = Int(matchedString) {
-                let paddedNumber = String(format: "%019d", number)
-                result = (result as NSString).replacingCharacters(in: range, with: paddedNumber)
-                offset += paddedNumber.count - match.range.length
-            }
-        }
-        
-        return result
+    enum Source {
+        case url(url: URL)
+        case gdrive(service: GTLRDriveService, fileId: String)
     }
 
     struct MetadataJSON: Decodable {
@@ -88,26 +69,20 @@ struct MetadataImporter {
         }
     }
     
+    let dbWriter: DatabaseWriter
+    let libraryId: Int64
+    let source: Source
+    let localUrl: URL? // Optional URL to local storage for copying images (if useLocalStorage)
+    let progressHandler: (Double) async -> Void // Callback to report import progress (0.0 to 1.0)
+    
+    var sourceRoot: SourceEntity {
+        return createRootSourceEntity(source)
+    }
+    
     /// Import all data from Eagle library metadata (folders and items)
-    /// - Parameters:
-    ///   - dbWriter: Database writer for transaction management
-    ///   - libraryId: ID of the library to import data for
-    ///   - libraryUrl: Security-scoped URL to the Eagle library (must be already activated)
-    ///   - localUrl: Optional URL to local storage for copying images (if useLocalStorage)
-    ///   - progressHandler: Callback to report import progress (0.0 to 1.0)
-    func importAll(
-        dbWriter: DatabaseWriter,
-        libraryId: Int64,
-        libraryUrl: URL,
-        localUrl: URL?,
-        progressHandler: @escaping (Double) async -> Void
-    ) async throws {
+    func importAll() async throws {
         // Import folders first (assuming folders are 10% of the work)
-        try await importFolders(
-            dbWriter: dbWriter,
-            libraryId: libraryId,
-            libraryUrl: libraryUrl
-        )
+        try await importFolders()
         
         await progressHandler(0.1) // 10% done after folders
         
@@ -115,10 +90,6 @@ struct MetadataImporter {
         
         // Import items (90% of the work)
         try await importItems(
-            dbWriter: dbWriter,
-            libraryId: libraryId,
-            libraryUrl: libraryUrl,
-            localUrl: localUrl,
             progressHandler: { itemProgress in
                 // Convert item progress [0,1] to overall progress [0.1,1]
                 await progressHandler(0.1 + 0.9 * itemProgress)
@@ -128,18 +99,8 @@ struct MetadataImporter {
     
     /// Import items from Eagle library metadata
     /// - Parameters:
-    ///   - dbWriter: Database writer for transaction management
-    ///   - libraryId: ID of the library to import items for
-    ///   - libraryUrl: Security-scoped URL to the Eagle library (must be already activated)
-    ///   - localUrl: Optional URL to local storage for copying images (if useLocalStorage)
-    ///   - progressHandler: Callback to report import progress
-    func importItems(
-        dbWriter: DatabaseWriter,
-        libraryId: Int64,
-        libraryUrl: URL,
-        localUrl: URL?,
-        progressHandler: @escaping (Double) async -> Void
-    ) async throws {
+    ///   - progressHandler: Callback to report import progress (0.0 to 1.0)
+    func importItems(progressHandler: @escaping (Double) async -> Void) async throws {
         Logger.app.debug("Starting item import for library \(libraryId)")
         
         // Get the library's last imported item modification time and existing item IDs
@@ -161,7 +122,7 @@ struct MetadataImporter {
         
         // Get all item times including those not in mtime.json
         let allItemTimes = try await getAllItemTimes(
-            libraryUrl: libraryUrl,
+            source: source,
             existingDbItemIds: existingItemIds
         )
         
@@ -183,7 +144,7 @@ struct MetadataImporter {
                 let batchMetadata: [(itemId: String, metadata: ItemMetadataJSON)] = try await withThrowingTaskGroup(of: (String, ItemMetadataJSON).self) { group in
                     for itemId in batch {
                         group.addTask {
-                            let metadata = try await loadItemMetadata(libraryUrl: libraryUrl, itemId: itemId)
+                            let metadata = try await loadItemMetadata(itemId: itemId)
                             return (itemId, metadata)
                         }
                     }
@@ -197,20 +158,16 @@ struct MetadataImporter {
                 
                 // Build Item instances from metadata
                 let batchItems: [(item: StoredItem, metadata: ItemMetadataJSON)] = batchMetadata.map { itemId, metadata in
-                    let item = buildItem(libraryId: libraryId, itemId: itemId, metadata: metadata)
+                    let item = buildItem(itemId: itemId, metadata: metadata)
                     return (item: item, metadata: metadata)
                 }
                 
                 // Copy images to local storage if localUrl provided
-                if let localUrl = localUrl {
+                if localUrl != nil {
                     try await withThrowingTaskGroup(of: Void.self) { group in
                         for (item, _) in batchItems {
                             group.addTask {
-                                try await copyItemImages(
-                                    item: item,
-                                    libraryUrl: libraryUrl,
-                                    localUrl: localUrl
-                                )
+                                try await copyItemImages(item: item)
                             }
                         }
                         
@@ -295,25 +252,22 @@ struct MetadataImporter {
     
     /// Get all item times from mtime.json and discover missing items if needed
     /// - Parameters:
-    ///   - libraryUrl: Security-scoped URL to the Eagle library
+    ///   - source: Eagle library source (url must be already activated, google service must be authorized)
     ///   - existingDbItemIds: Set of item IDs already in the database
     /// - Returns: Dictionary of all item IDs to their modification times
     ///           - New items (not in mtime.json or DB): assigned Int64.max to ensure import
     ///           - Items in DB but not in mtime.json: assigned 0 to preserve without re-import
     private func getAllItemTimes(
-        libraryUrl: URL,
+        source: Source,
         existingDbItemIds: Set<String>
     ) async throws -> [String: Int64] {
-        let mtimeURL = libraryUrl.appending(path: "mtime.json", directoryHint: .notDirectory)
-        
-        let data = try await dataWithoutCache(from: mtimeURL)
+        let data = try await sourceRoot.appending("mtime.json", isFolder: false).getData()
         let mtimeData = try JSONDecoder().decode(MTimeJSON.self, from: data)
         
         // Only scan directory if counts don't match (indicating missing items)
         if mtimeData.totalCount != mtimeData.itemTimes.count {
             Logger.app.debug("Item count mismatch: total=\(mtimeData.totalCount), in mtime=\(mtimeData.itemTimes.count), scanning for missing items")
             return try await discoverAllItems(
-                libraryUrl: libraryUrl,
                 existingItemTimes: mtimeData.itemTimes,
                 existingDbItemIds: existingDbItemIds
             )
@@ -324,32 +278,29 @@ struct MetadataImporter {
     
     /// Discover all item directories in the Eagle library and merge with existing mtime data
     /// - Parameters:
-    ///   - libraryUrl: Security-scoped URL to the Eagle library
     ///   - existingItemTimes: Existing item modification times from mtime.json
     ///   - existingDbItemIds: Set of item IDs already in the database
     /// - Returns: Merged dictionary including all discovered items
     private func discoverAllItems(
-        libraryUrl: URL,
         existingItemTimes: [String: Int64],
         existingDbItemIds: Set<String>
     ) async throws -> [String: Int64] {
         var allItemTimes = existingItemTimes
-        let imagesURL = libraryUrl.appending(path: "images", directoryHint: .isDirectory)
         
-        guard FileManager.default.fileExists(atPath: imagesURL.path) else {
-            Logger.app.debug("Images directory does not exist at \(imagesURL.path)")
+        guard let imagesDir = try? await sourceRoot.appending("images", isFolder: true) else {
+            Logger.app.debug("Images directory does not exist")
             return allItemTimes
         }
         
-        let contents = try FileManager.default.contentsOfDirectory(at: imagesURL, includingPropertiesForKeys: nil)
+        let contents = try await imagesDir.contentsOfFolder()
         var missingItemsNew: [String] = []
         var missingItemsInDb: [String] = []
         
-        for itemURL in contents {
+        for (name, _) in contents {
             // Check if it's an .info directory
-            if itemURL.lastPathComponent.hasSuffix(".info") {
+            if name.hasSuffix(".info") {
                 // Extract item ID (remove .info suffix)
-                let itemId = String(itemURL.lastPathComponent.dropLast(5))
+                let itemId = String(name.dropLast(5))
                 
                 // If this item is not in mtime data
                 if allItemTimes[itemId] == nil {
@@ -379,19 +330,12 @@ struct MetadataImporter {
         return allItemTimes
     }
     
-    private func loadItemMetadata(
-        libraryUrl: URL,
-        itemId: String
-    ) async throws -> ItemMetadataJSON {
-        let metadataURL = libraryUrl
-            .appending(path: "images/\(itemId).info/metadata.json", directoryHint: .notDirectory)
-        
-        let data = try await dataWithoutCache(from: metadataURL)
+    private func loadItemMetadata(itemId: String) async throws -> ItemMetadataJSON {
+        let data = try await sourceRoot.appending("images/\(itemId).info/metadata.json", isFolder: false).getData()
         return try JSONDecoder().decode(ItemMetadataJSON.self, from: data)
     }
     
     private func buildItem(
-        libraryId: Int64,
         itemId: String,
         metadata: ItemMetadataJSON
     ) -> StoredItem {
@@ -418,13 +362,14 @@ struct MetadataImporter {
         )
     }
     
-    private func copyItemImages(
-        item: StoredItem,
-        libraryUrl: URL,
-        localUrl: URL
-    ) async throws {
+    private func copyItemImages(item: StoredItem) async throws {
+        guard let localUrl else {
+            Logger.app.debug("library doesn't have local storage, skipping image copy")
+            return
+        }
+        
         // Copy main image file
-        let sourceImagePath = libraryUrl.appending(path: item.imagePath, directoryHint: .notDirectory)
+        let sourceImage = try await sourceRoot.appending(item.imagePath, isFolder: false)
         let destImagePath = localUrl.appending(path: item.imagePath, directoryHint: .notDirectory)
         
         // Create parent directory
@@ -437,21 +382,22 @@ struct MetadataImporter {
         }
         
         // Copy image file
-        try FileManager.default.copyItem(at: sourceImagePath, to: destImagePath)
+        try await sourceImage.copy(to: destImagePath)
         Logger.app.debug("Copied image: \(item.imagePath)")
         
         // Copy thumbnail if it exists and is different from main image
         if !item.noThumbnail {
-            let sourceThumbnailPath = libraryUrl.appending(path: item.thumbnailPath, directoryHint: .notDirectory)
-            if FileManager.default.fileExists(atPath: sourceThumbnailPath.path) {
-                let destThumbnailPath = localUrl.appending(path: item.thumbnailPath, directoryHint: .notDirectory)
+            if let sourceThumbnail = try? await sourceRoot.appending(item.thumbnailPath, isFolder: false) {
+                // ignore if thumbnail is not exist
                 
+                let destThumbnailPath = localUrl.appending(path: item.thumbnailPath, directoryHint: .notDirectory)
+                    
                 // Remove existing thumbnail if it exists
                 if FileManager.default.fileExists(atPath: destThumbnailPath.path) {
                     try FileManager.default.removeItem(at: destThumbnailPath)
                 }
-                
-                try FileManager.default.copyItem(at: sourceThumbnailPath, to: destThumbnailPath)
+                    
+                try await sourceThumbnail.copy(to: destThumbnailPath)
                 Logger.app.debug("Copied thumbnail: \(item.thumbnailPath)")
             }
         }
@@ -490,20 +436,10 @@ struct MetadataImporter {
     }
     
     /// Import folders from Eagle library metadata
-    /// - Parameters:
-    ///   - dbWriter: Database writer for transaction management
-    ///   - libraryId: ID of the library to import folders for
-    ///   - libraryUrl: Security-scoped URL to the Eagle library (must be already activated)
-    func importFolders(
-        dbWriter: DatabaseWriter,
-        libraryId: Int64,
-        libraryUrl: URL
-    ) async throws {
+    func importFolders() async throws {
         Logger.app.debug("Starting metadata import for library \(libraryId)")
         
-        let metadataURL = libraryUrl.appending(path: "metadata.json", directoryHint: .notDirectory)
-        
-        let data = try await dataWithoutCache(from: metadataURL)
+        let data = try await sourceRoot.appending("metadata.json", isFolder: false).getData()
         let metadata = try JSONDecoder().decode(MetadataJSON.self, from: data)
         
         try await dbWriter.write { db in
@@ -614,7 +550,7 @@ struct MetadataImporter {
             coverItemId: folderJSON.coverId,
             sortType: sortType,
             sortAscending: sortAscending,
-            sortModified: false  // Only set to true when user changes in our app
+            sortModified: false // Only set to true when user changes in our app
         )
 
         // Use save for existing folders, insert for new folders
@@ -653,12 +589,159 @@ struct MetadataImporter {
         }
     }
     
-    private func dataWithoutCache(from url: URL) async throws -> Data {
+    /// Converts a title to Eagle's special sort format
+    /// Extracts digit sequences and replaces them with left zero-padded 19-character values
+    private func nameForSort(from name: String) -> String {
+        let regex = try! NSRegularExpression(pattern: "\\d+", options: [])
+        let nsString = name as NSString
+        let matches = regex.matches(in: name, options: [], range: NSRange(location: 0, length: nsString.length))
+        
+        var result = name
+        var offset = 0
+        
+        for match in matches {
+            let range = NSRange(location: match.range.location + offset, length: match.range.length)
+            let matchedString = (result as NSString).substring(with: range)
+            
+            // Convert to integer and back to get clean number
+            if let number = Int(matchedString) {
+                let paddedNumber = String(format: "%019d", number)
+                result = (result as NSString).replacingCharacters(in: range, with: paddedNumber)
+                offset += paddedNumber.count - match.range.length
+            }
+        }
+        
+        return result
+    }
+}
+
+protocol SourceEntity {
+    func appending(_ path: String, isFolder: Bool) async throws -> SourceEntity
+    func getData() async throws -> Data
+    func contentsOfFolder() async throws -> [(String, SourceEntity)]
+    func copy(to destination: URL) async throws -> Void
+}
+
+struct NamedEntity {
+    let name: String
+    let entity: SourceEntity
+}
+
+func createRootSourceEntity(_ source: MetadataImporter.Source) -> any SourceEntity {
+    switch source {
+    case .url(let url):
+        return URLSourceEntity(url: url)
+    case .gdrive(let service, let fileId):
+        return GoogleDriveSourceEntity(service: service, fileId: fileId)
+    }
+}
+
+struct URLSourceEntity: SourceEntity {
+    let url: URL
+    
+    func appending(_ path: String, isFolder: Bool) async throws -> SourceEntity {
+        let newURL = url.appending(path: path, directoryHint: isFolder ? .isDirectory : .notDirectory)
+        guard FileManager.default.fileExists(atPath: newURL.path) else {
+            throw SourceEntityError.fileNotFound
+        }
+        return URLSourceEntity(url: newURL)
+    }
+    
+    func getData() async throws -> Data {
         var request = URLRequest(url: url)
         request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
         let (data, _) = try await URLSession.shared.data(for: request)
         return data
     }
+    
+    func contentsOfFolder() async throws -> [(String, SourceEntity)] {
+        let paths = try FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
+        return paths.map { path in
+            (path.lastPathComponent, URLSourceEntity(url: path))
+        }
+    }
+    
+    func copy(to destination: URL) async throws {
+        try FileManager.default.copyItem(at: url, to: destination)
+    }
+}
+
+struct GoogleDriveSourceEntity: SourceEntity {
+    let service: GTLRDriveService
+    let fileId: String
+    
+    func appending(_ path: String, isFolder: Bool) async throws -> SourceEntity {
+        var childFileId = fileId
+        for name in path.split(separator: "/") {
+            childFileId = try await GoogleDriveUtils.getChildFileId(
+                service: service, folderId: childFileId, fileName: String(name)
+            )
+        }
+        return GoogleDriveSourceEntity(service: service, fileId: childFileId)
+    }
+    
+    func getData() async throws -> Data {
+        return try await GoogleDriveUtils.getFileData(service: service, fileId: fileId)
+    }
+    
+    func contentsOfFolder() async throws -> [(String, SourceEntity)] {
+        let query = GTLRDriveQuery_FilesList.query()
+        query.spaces = "drive"
+        query.q = "'\(fileId)' in parents and trashed = false"
+        query.fields = "files(id,name),nextPageToken"
+        query.orderBy = "name"
+        query.pageSize = 1000
+        return try await withCheckedThrowingContinuation { cont in
+            service.executeQuery(query) { _, result, error in
+                if let error { return cont.resume(throwing: error) }
+                guard let fileList = result as? GTLRDrive_FileList,
+                      let files = fileList.files
+                else {
+                    return cont.resume(returning: [])
+                }
+                let entities = files.map { file in
+                    (
+                        file.name ?? "",
+                        GoogleDriveSourceEntity(
+                            service: service,
+                            fileId: file.identifier ?? ""
+                        )
+                    )
+                }
+                cont.resume(returning: entities)
+            }
+        }
+    }
+    
+    func copy(to destination: URL) async throws {
+        let fetcher = service.fetcherService.fetcher(
+            withURLString: "https://www.googleapis.com/drive/v3/files/\(fileId)?alt=media"
+        )
+        fetcher.destinationFileURL = destination
+
+        return try await withTaskCancellationHandler(
+            operation: {
+                try await withCheckedThrowingContinuation { cont in
+                    fetcher.beginFetch { _, error in
+                        if let error = error {
+                            try? FileManager.default.removeItem(at: destination)
+                            cont.resume(throwing: error)
+                            return
+                        }
+                        cont.resume(returning: ())
+                    }
+                }
+            },
+            onCancel: {
+                fetcher.stopFetching()
+                try? FileManager.default.removeItem(at: destination)
+            }
+        )
+    }
+}
+
+enum SourceEntityError: Error {
+    case fileNotFound
 }
 
 extension Array {

@@ -5,6 +5,7 @@
 //  Created on 2025/08/23
 //
 
+import GoogleSignIn
 import Nuke
 import NukeVideo
 import SDWebImage
@@ -47,6 +48,9 @@ struct EagleViewerApp: App {
                     .environmentObject(metadataImportManager)
                     .environmentObject(EventCenter.shared)
                     .detectOrientation()
+                    .onOpenURL { url in
+                        GIDSignIn.sharedInstance.handle(url)
+                    }
                     .onChange(of: scenePhase) { _, newPhase in
                         switch newPhase {
                         case .active:
