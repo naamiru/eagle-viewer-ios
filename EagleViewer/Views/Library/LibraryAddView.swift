@@ -100,10 +100,11 @@ struct LibraryAddView: View {
     }
 
     private var isCloudSource: Bool {
-        if case .file = librarySource {
-            return false
+        if case .gdrive = librarySource {
+            true
+        } else {
+            false
         }
-        return true
     }
 
     private func createLibrary(name: String, source: LibrarySource, useLocalStorage: Bool) async throws {
