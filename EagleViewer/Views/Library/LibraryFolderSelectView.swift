@@ -256,7 +256,7 @@ struct LibraryFolderSelectView: View {
         selectionTask?.cancel()
         selectionTask = Task {
             do {
-                let (name, bookmarkData) = try await getLibraryInfo(url)
+                let (name, bookmarkData) = try await LibraryValidator.getValidLibraryInfo(url)
                 
                 guard !Task.isCancelled else { return }
 
@@ -275,62 +275,6 @@ struct LibraryFolderSelectView: View {
                 }
             }
         }
-    }
-    
-    private func getLibraryInfo(_ url: URL) async throws -> (name: String, bookmarkData: Data) {
-        // Validate folder name ends with .library
-        let folderName = url.lastPathComponent
-        guard folderName.hasSuffix(".library") else {
-            throw LibrarySelectionError.invalidFolderName
-        }
-        
-        guard url.startAccessingSecurityScopedResource() else {
-            throw LibrarySelectionError.accessDenied
-        }
-        defer { url.stopAccessingSecurityScopedResource() }
-        
-        // Check Eagle version from metadata.json
-        let metadataUrl = url.appending(path: "metadata.json", directoryHint: .notDirectory)
-        
-        // Check file existence
-        guard FileManager.default.fileExists(atPath: metadataUrl.path) else {
-            throw LibrarySelectionError.metadataNotFound
-        }
-        
-        // Read metadata using URLSession
-        let (metadataData, _) = try await URLSession.shared.data(from: metadataUrl)
-        
-        // Parse metadata to check version
-        struct MetadataVersion: Decodable {
-            let applicationVersion: String?
-        }
-        
-        let decoder = JSONDecoder()
-        let metadata = try decoder.decode(MetadataVersion.self, from: metadataData)
-        
-        // Check if applicationVersion exists and starts with "4."
-        if let version = metadata.applicationVersion {
-            guard version.hasPrefix("4.") else {
-                throw LibrarySelectionError.unsupportedVersion(version)
-            }
-        } else {
-            throw LibrarySelectionError.versionNotFound
-        }
-        
-        let bookmarkData = try url.bookmarkData(
-            options: [],
-            includingResourceValuesForKeys: nil,
-            relativeTo: nil
-        )
-        
-        // Extract library name from the URL
-        let libraryName = String(url.lastPathComponent.dropLast(8)) // Remove .library extension
-        
-        guard !libraryName.isEmpty else {
-            throw LibrarySelectionError.emptyLibraryName
-        }
-        
-        return (name: libraryName, bookmarkData: bookmarkData)
     }
 }
 
@@ -408,7 +352,7 @@ enum LibraryValidator {
         return try await GoogleDriveUtils.getFileData(service: service, fileId: fileId)
     }
     
-    private func getLibraryInfo(_ url: URL) async throws -> (name: String, bookmarkData: Data) {
+    static func getValidLibraryInfo(_ url: URL) async throws -> (name: String, bookmarkData: Data) {
         // Validate folder name ends with .library
         let folderName = url.lastPathComponent
         guard folderName.hasSuffix(".library") else {
@@ -431,22 +375,7 @@ enum LibraryValidator {
         // Read metadata using URLSession
         let (metadataData, _) = try await URLSession.shared.data(from: metadataUrl)
         
-        // Parse metadata to check version
-        struct MetadataVersion: Decodable {
-            let applicationVersion: String?
-        }
-        
-        let decoder = JSONDecoder()
-        let metadata = try decoder.decode(MetadataVersion.self, from: metadataData)
-        
-        // Check if applicationVersion exists and starts with "4."
-        if let version = metadata.applicationVersion {
-            guard version.hasPrefix("4.") else {
-                throw LibrarySelectionError.unsupportedVersion(version)
-            }
-        } else {
-            throw LibrarySelectionError.versionNotFound
-        }
+        try validateMetadata(metadataData)
         
         let bookmarkData = try url.bookmarkData(
             options: [],
