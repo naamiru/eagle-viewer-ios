@@ -106,10 +106,9 @@ struct LibraryFolderSelectView: View {
                         } else {
                             Text("Browse for Eagle Library")
                                 .frame(maxWidth: .infinity)
-                                .frame(height: 22) // Consistent height
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
                     .controlSize(.large)
                     .disabled(isProcessing)
                     
