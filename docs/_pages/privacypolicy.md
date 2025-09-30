@@ -4,53 +4,119 @@ title: Privacy Policy
 include_in_header: false
 ---
 
-**Privacy Policy**
+# Privacy Policy
 
-**Effective Date:** August 31, 2025
+**Effective Date:** August 31, 2025  
+**Application:** Eagle Viewer (iOS)
 
-This privacy policy governs your use of the software application **Eagle Viewer** ("the Application") for mobile devices.
+## Our Commitment to Your Privacy
 
-**Our Commitment to Your Privacy**
+We are committed to protecting your privacy. Eagle Viewer was designed with privacy as a top priority. We minimize data access, do not operate any backend servers, and do not monetize user data.
 
-We are committed to protecting your privacy. We understand the importance of your personal data and want you to feel secure when using our Application. This Application was designed with privacy as a top priority.
+The Application works with Eagle library folders located on your device or in your connected storage. Integration with Google Drive is entirely **optional** and used only if you choose to connect your Google account.
 
-**1. Data Collection**
+---
 
-We do not collect, store, transmit, or have access to any personal information or personally identifiable data from our users. All data, files, and libraries that you open or manage with the Application are processed locally on your device. The data remains under your control and is never sent to us or any third party.
+## 1. Default Data Handling (All Users)
 
-**2. Permissions and Access to Files**
+By default, the Application works with Eagle library folders that you open through the iOS Files app.
 
-The Application may request permission to access your files and folders (via the Files app, iCloud Drive, or Google Drive). This permission is required solely for the app's core functionality, which is to allow you to open and view your libraries. We do not use this permission to access your data for any other purpose, and we do not collect or store any of your files.
+### Data Accessed
 
-When you connect your Google account, the Application may request the **Google Drive `drive.readonly` scope**.
+- Files and metadata contained in the Eagle library folder that you explicitly select through the Files app.
 
-- This scope allows the Application to view the metadata and content of files and folders in your Google Drive.
-- Access is limited to the files or folders that you explicitly select within the Application.
-- All accessed data is processed locally on your device and is never transmitted to our servers or shared with third parties.
+### Data Usage
 
-**3. Analytics and Crash Reports**
+- Accessed files and metadata are used solely for browsing, displaying, and synchronizing your Eagle library within the Application.
 
-We do not add any third-party analytics or crash reporting tools to the Application. Our goal is to collect no data.
+### Data Sharing
 
-However, if you have chosen to share diagnostics and usage information with app developers through your device's settings, Apple may collect and provide us with anonymized usage statistics and crash reports. This data is aggregated, does not personally identify you, and helps us improve the Application's stability and performance. We do not attempt to link this anonymous data to any individual user.
+- No data from these sources is ever transmitted to our servers.
+- No data is shared with third parties.
+- Transfers to or from network drives are handled entirely by the iOS system and the storage provider, not by the Application.
 
-**4. Third-Party Services**
+### Data Storage & Protection
 
-The Application does not use any third-party services or advertising networks that could collect information about you.
+- Files and metadata are processed only within the secure environment of your device.
+- Any locally cached content or metadata remains in the Application’s sandbox and is protected by standard iOS security mechanisms (sandboxing and device-level encryption).
 
-As an exception, the Application may use **Google APIs** to enable optional integration with Google Drive.  
+### Data Retention & Deletion
+
+- Cached data and metadata related to a selected library are stored locally only as needed for Application functionality.
+- This data is deleted when you uninstall the Application **or when you delete the selected library from within the Application**.
+
+**Note:** The practices described in this section apply only when you use the Application with files accessed through the iOS Files app.  
+If you choose to connect Google Drive, the data handling practices are described separately in **Section 2. Optional Google Drive Integration**.
+
+---
+
+## 2. Optional Google Drive Integration
+
+If you choose to connect your Google account, the Application may request the following scope:
+
+- **drive.readonly** — to view metadata and contents of files and folders in your Google Drive.
+
+### Data Accessed
+
+- Metadata of files and folders (names, IDs, structure), used to let you browse your Google Drive and select one Eagle library folder.
+- Contents of images and metadata files contained in the Eagle library folder you explicitly select, used to display and synchronize your Eagle library within the Application.
+- Basic Google Account profile information returned as part of the OAuth authentication process. This is used only for the sign-in process and is not stored or otherwise processed by the Application.
+
+### Data Sharing
+
+- Google Drive data is never shared with third parties.
+- The Application does not transmit data to our servers (we operate no backend).
+- All data remains on your device and under your control.
+
+### Data Storage & Protection
+
+- Accessed data is processed **locally on your device** only.
+- To provide core functionality, the Application creates a **local cache of image files** from the selected Google Drive folder and **imports associated metadata into an on-device database** within the Application’s sandbox.
+- Cached copies and database records are used solely to display and synchronize your library and are **never uploaded to our servers**.
+- The Application’s Google Drive access is **read-only** and does not create, modify, or delete files in your Google Drive.
+- Standard iOS security mechanisms (sandboxing and device-level encryption) protect locally stored data.
+
+### Data Retention & Deletion
+
+- Google Drive data is cached locally only as needed for Application functionality.
+- Cached images and imported metadata related to a library are deleted when you uninstall the Application **or when you delete the selected library from within the Application**.
+- No data is retained on our servers.
+- You may revoke the Application’s access at any time via your [Google Account settings](https://myaccount.google.com/permissions). This will immediately prevent further access to your Google Drive data.
+
+---
+
+## 3. Analytics and Crash Reports
+
+The Application does not include third-party analytics or crash reporting tools.  
+If you opt in through iOS system settings, Apple may provide anonymized, aggregated crash reports. These reports cannot be used to personally identify you.
+
+---
+
+## 4. Third-Party Services
+
+The Application integrates only with:
+
+- **Google Drive (via Google APIs)** – optional, used only if you connect your Google account.
+
 Our use and transfer of information received from Google APIs will adhere to the [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy), including the **Limited Use requirements**.
 
-**5. Children's Privacy**
+---
 
-We do not knowingly collect any personal information from children under the age of 13. Since our Application does not collect any personal information whatsoever, it is inherently safe for use by people of all ages.
+## 5. Children’s Privacy
 
-**6. Changes to This Privacy Policy**
+We do not knowingly collect any personal information from children under the age of 13.  
+Since the Application does not collect personal information, it is safe for use by people of all ages.
 
-We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page. You are advised to review this Privacy Policy periodically for any changes. Changes to this Privacy Policy are effective when they are posted on this page.
+---
 
-**7. Contact Us**
+## 6. Changes to This Privacy Policy
 
-If you have any questions or suggestions about our Privacy Policy, do not hesitate to contact us.
+We may update our Privacy Policy from time to time. Updates will be posted on this page, and changes become effective immediately upon posting. You are encouraged to review this Privacy Policy periodically.
 
-naamiruuu@gmail.com
+---
+
+## 7. Contact Us
+
+If you have any questions or concerns about this Privacy Policy, please contact us at:
+
+**Email:** naamiruuu@gmail.com
