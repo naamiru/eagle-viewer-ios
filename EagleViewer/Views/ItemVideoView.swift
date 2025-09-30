@@ -16,7 +16,8 @@ struct ItemVideoView: View {
     let item: Item
     let dismiss: () -> Void
     
-    @State private var player: AVPlayer?
+    @State private var player: AVQueuePlayer?
+    @State private var playerLooper: AVPlayerLooper?
     
     @EnvironmentObject private var imageViewerManager: ImageViewerManager
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
@@ -40,7 +41,6 @@ struct ItemVideoView: View {
                 VideoPlayer(player: player) {
                     VStack {
                         HStack {
-                            Spacer()
                             Button(action: {
                                 dismiss()
                             }) {
@@ -48,6 +48,8 @@ struct ItemVideoView: View {
                                     .foregroundColor(.white)
                             }
                             .padding()
+                            
+                            Spacer()
                         }
                         Spacer()
                     }
@@ -57,6 +59,9 @@ struct ItemVideoView: View {
                 .onAppear {
                     player.play()
                 }
+                .onDisappear {
+                    player.pause()
+                }
             } else {
                 placeholder
             }
@@ -64,7 +69,10 @@ struct ItemVideoView: View {
         .ignoresSafeArea()
         .onAppear {
             if let videoURL {
-                player = AVPlayer(url: videoURL)
+                let asset = AVURLAsset(url: videoURL)
+                let item = AVPlayerItem(asset: asset)
+                player = AVQueuePlayer(playerItem: item)
+                playerLooper = AVPlayerLooper(player: player!, templateItem: item)
             }
         }
     }
