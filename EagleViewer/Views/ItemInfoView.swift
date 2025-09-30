@@ -204,6 +204,7 @@ struct ItemInfoAnnotation: View {
                 .textSelection(.enabled)
                 .font(.caption)
                 .foregroundColor(.primary.opacity(0.6))
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
                 .background(
                     RoundedRectangle(cornerRadius: 6)
