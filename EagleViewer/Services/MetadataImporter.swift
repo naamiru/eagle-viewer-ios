@@ -336,7 +336,7 @@ struct MetadataImporter {
         var allItemTimes = existingItemTimes
         let imagesURL = libraryUrl.appending(path: "images", directoryHint: .isDirectory)
         
-        guard FileManager.default.fileExists(atPath: imagesURL.path) else {
+        guard await CloudFile.fileExists(at: imagesURL) else {
             Logger.app.debug("Images directory does not exist at \(imagesURL.path)")
             return allItemTimes
         }
@@ -437,13 +437,14 @@ struct MetadataImporter {
         }
         
         // Copy image file
+        try await CloudFile.ensureMaterialized(at: sourceImagePath)
         try FileManager.default.copyItem(at: sourceImagePath, to: destImagePath)
         Logger.app.debug("Copied image: \(item.imagePath)")
         
         // Copy thumbnail if it exists and is different from main image
         if !item.noThumbnail {
             let sourceThumbnailPath = libraryUrl.appending(path: item.thumbnailPath, directoryHint: .notDirectory)
-            if FileManager.default.fileExists(atPath: sourceThumbnailPath.path) {
+            if await CloudFile.fileExists(at: sourceThumbnailPath) {
                 let destThumbnailPath = localUrl.appending(path: item.thumbnailPath, directoryHint: .notDirectory)
                 
                 // Remove existing thumbnail if it exists
@@ -451,6 +452,7 @@ struct MetadataImporter {
                     try FileManager.default.removeItem(at: destThumbnailPath)
                 }
                 
+                try await CloudFile.ensureMaterialized(at: sourceThumbnailPath)
                 try FileManager.default.copyItem(at: sourceThumbnailPath, to: destThumbnailPath)
                 Logger.app.debug("Copied thumbnail: \(item.thumbnailPath)")
             }
@@ -614,7 +616,7 @@ struct MetadataImporter {
             coverItemId: folderJSON.coverId,
             sortType: sortType,
             sortAscending: sortAscending,
-            sortModified: false  // Only set to true when user changes in our app
+            sortModified: false // Only set to true when user changes in our app
         )
 
         // Use save for existing folders, insert for new folders
