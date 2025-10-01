@@ -1,130 +1,182 @@
 //
-//  ItemThumbnailView.swift
+//  ItemVideoView.swift
 //  EagleViewer
 //
 //  Created on 2025/08/24
 //
 
+import AVFoundation
 import AVKit
+import OSLog
 import SwiftUI
 
-struct ItemVideoView: View {
+struct ItemVideoView: UIViewControllerRepresentable {
     static func isVideo(item: Item) -> Bool {
-        return item.duration != 0
+        item.duration > 0
     }
-        
+
     let item: Item
     let dismiss: () -> Void
-    
-    @State private var player: AVQueuePlayer?
-    @State private var playerLooper: AVPlayerLooper?
-    
-    @State private var showCloseButton = true
-    @State private var hideButtonTask: Task<Void, Never>?
-    
-    @EnvironmentObject private var imageViewerManager: ImageViewerManager
+
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
-    
-    private var videoURL: URL? {
-        guard let currentLibraryURL = libraryFolderManager.currentLibraryURL else {
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(dismiss: dismiss)
+    }
+
+    func makeUIViewController(context: Context) -> LauncherViewController {
+        let controller = LauncherViewController()
+        controller.coordinator = context.coordinator
+        controller.videoURL = videoURL()
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: LauncherViewController, context: Context) {
+        context.coordinator.dismiss = dismiss
+        let url = videoURL()
+        if uiViewController.videoURL != url {
+            uiViewController.videoURL = url
+            uiViewController.resetPresentationIfNeeded()
+        }
+    }
+
+    private func videoURL() -> URL? {
+        guard let baseURL = libraryFolderManager.currentLibraryURL else {
             return nil
         }
-        
-        return currentLibraryURL.appending(path: item.imagePath, directoryHint: .notDirectory)
-    }
-    
-    private var placeholder: some View {
-        Rectangle().fill(Color.gray.opacity(0.3))
-            .aspectRatio(CGSize(width: item.width, height: item.height), contentMode: .fit)
-    }
-    
-    var body: some View {
-        Group {
-            if let player {
-                VideoPlayer(player: player) {
-                    if showCloseButton {
-                        VStack {
-                            HStack {
-                                Button(action: {
-                                    dismiss()
-                                }) {
-                                    Image(systemName: "chevron.down")
-                                        .foregroundColor(.white)
-                                }
 
-                                Spacer()
-                            }
-                            .padding()
+        return baseURL.appending(path: item.imagePath, directoryHint: .notDirectory)
+    }
 
-                            Spacer()
-                        }
-                        .transition(.opacity) // not working
-                    }
-                }
-                .ignoresSafeArea()
-                .simultaneousGesture(tapShowButtonGesture())
-                .simultaneousGesture(dragCloseGesture())
-                .onAppear {
-                    player.play()
-                    scheduleButtonHide()
-                }
-                .onDisappear {
-                    player.pause()
+    final class Coordinator: NSObject, AVPlayerViewControllerDelegate, UIAdaptivePresentationControllerDelegate {
+        var dismiss: (() -> Void)?
+
+        init(dismiss: @escaping () -> Void) {
+            self.dismiss = dismiss
+        }
+
+        private func triggerDismiss() {
+            guard let dismiss else { return }
+            self.dismiss = nil
+            DispatchQueue.main.async {
+                dismiss()
+            }
+        }
+
+        func dismissIfNeeded() {
+            triggerDismiss()
+        }
+
+        func playerViewControllerWillDismiss(_ playerViewController: AVPlayerViewController) {
+            triggerDismiss()
+        }
+
+        func playerViewControllerDidDismiss(_ playerViewController: AVPlayerViewController) {
+            triggerDismiss()
+        }
+
+        func playerViewControllerDidStopPictureInPicture(_ playerViewController: AVPlayerViewController) {
+            triggerDismiss()
+        }
+
+        func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+            triggerDismiss()
+        }
+    }
+
+    final class LauncherViewController: UIViewController {
+        var videoURL: URL?
+        var coordinator: Coordinator?
+
+        private var hasPresentedPlayer = false
+        private var player: AVQueuePlayer?
+        private var playerLooper: AVPlayerLooper?
+        private var hasConfiguredAudioSession = false
+
+        override func viewDidLoad() {
+            super.viewDidLoad()
+            view.backgroundColor = .clear
+        }
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            if hasPresentedPlayer, presentedViewController == nil {
+                hasPresentedPlayer = false
+                deactivateAudioSessionIfNeeded()
+                player?.pause()
+                player = nil
+                playerLooper = nil
+                DispatchQueue.main.async { [weak self] in
+                    self?.coordinator?.dismissIfNeeded()
                 }
             } else {
-                placeholder
+                presentPlayerIfNeeded()
             }
         }
-        .ignoresSafeArea()
-        .onAppear {
-            if let videoURL {
-                let asset = AVURLAsset(url: videoURL)
-                let item = AVPlayerItem(asset: asset)
-                player = AVQueuePlayer(playerItem: item)
-                playerLooper = AVPlayerLooper(player: player!, templateItem: item)
+
+        func resetPresentationIfNeeded() {
+            hasPresentedPlayer = false
+            if isViewLoaded, view.window != nil {
+                presentPlayerIfNeeded()
             }
         }
-    }
-    
-    private func dragCloseGesture() -> some Gesture {
-        DragGesture()
-            .onEnded { value in
-                let w = abs(value.translation.width), h = value.translation.height
-                if h > 10, w < 20, w / h < 0.2 {
-                    dismiss()
-                }
-            }
-    }
-    
-    private func tapShowButtonGesture() -> some Gesture {
-        TapGesture()
-            .onEnded { _ in
-                hideButtonTask?.cancel()
 
-                // show close button after 0.5sec
-                hideButtonTask = Task {
-                    try? await Task.sleep(nanoseconds: 500_000_000)
-                                
-                    if !Task.isCancelled {
-                        showCloseButton = true
-                        scheduleButtonHide()
-                    }
-                }
-            }
-    }
-    
-    private func scheduleButtonHide() {
-        hideButtonTask?.cancel()
+        private func presentPlayerIfNeeded() {
+            guard !hasPresentedPlayer else { return }
+            hasPresentedPlayer = true
 
-        // hide close button after 5sec
-        hideButtonTask = Task {
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
-                
-            if !Task.isCancelled {
-                withAnimation {
-                    showCloseButton = false
+            guard let videoURL else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.coordinator?.dismissIfNeeded()
                 }
+                return
             }
+
+            configureAudioSessionIfNeeded()
+
+            let asset = AVURLAsset(url: videoURL)
+            let playerItem = AVPlayerItem(asset: asset)
+            let queuePlayer = AVQueuePlayer(playerItem: playerItem)
+            let looper = AVPlayerLooper(player: queuePlayer, templateItem: playerItem)
+
+            player = queuePlayer
+            playerLooper = looper
+
+            let playerController = AVPlayerViewController()
+            playerController.player = queuePlayer
+            playerController.delegate = coordinator
+            playerController.entersFullScreenWhenPlaybackBegins = true
+            playerController.allowsPictureInPicturePlayback = true
+            playerController.modalPresentationStyle = .fullScreen
+
+            present(playerController, animated: true) { [weak self, weak playerController] in
+                playerController?.presentationController?.delegate = self?.coordinator
+                queuePlayer.play()
+            }
+        }
+
+        private func configureAudioSessionIfNeeded() {
+            guard !hasConfiguredAudioSession else { return }
+
+            let session = AVAudioSession.sharedInstance()
+            do {
+                try session.setCategory(.playback, mode: .moviePlayback, options: [.mixWithOthers])
+                try session.setActive(true, options: [])
+                hasConfiguredAudioSession = true
+            } catch {
+                Logger.app.warning("Failed to configure audio session for video playback: \(error.localizedDescription)")
+            }
+        }
+
+        private func deactivateAudioSessionIfNeeded() {
+            guard hasConfiguredAudioSession else { return }
+            let session = AVAudioSession.sharedInstance()
+            do {
+                try session.setActive(false, options: [.notifyOthersOnDeactivation])
+            } catch {
+                Logger.app.warning("Failed to deactivate audio session after video playback: \(error.localizedDescription)")
+            }
+            hasConfiguredAudioSession = false
         }
     }
 }
