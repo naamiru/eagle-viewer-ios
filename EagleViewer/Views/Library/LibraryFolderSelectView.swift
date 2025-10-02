@@ -199,12 +199,12 @@ struct LibraryFolderSelectView: View {
         let metadataUrl = url.appending(path: "metadata.json", directoryHint: .notDirectory)
         
         // Check file existence
-        guard FileManager.default.fileExists(atPath: metadataUrl.path) else {
+        guard await CloudFile.fileExists(at: metadataUrl) else {
             throw LibrarySelectionError.metadataNotFound
         }
         
         // Read metadata using URLSession
-        let (metadataData, _) = try await URLSession.shared.data(from: metadataUrl)
+        let metadataData = try await CloudFile.fileData(at: metadataUrl)
         
         // Parse metadata to check version
         struct MetadataVersion: Decodable {

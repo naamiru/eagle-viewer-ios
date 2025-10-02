@@ -178,7 +178,8 @@ struct MetadataImporter {
             var processedItems = 0
             
             // Process items in batches, each in its own transaction
-            for batch in itemsToUpdate.chunks(ofSize: 100) {
+            let batchSize = localUrl == nil ? 100 : 10
+            for batch in itemsToUpdate.chunks(ofSize: batchSize) {
                 // Load metadata for all items in batch first
                 let batchMetadata: [(itemId: String, metadata: ItemMetadataJSON)] = try await withThrowingTaskGroup(of: (String, ItemMetadataJSON).self) { group in
                     for itemId in batch {
@@ -306,7 +307,7 @@ struct MetadataImporter {
     ) async throws -> [String: Int64] {
         let mtimeURL = libraryUrl.appending(path: "mtime.json", directoryHint: .notDirectory)
         
-        let data = try await dataWithoutCache(from: mtimeURL)
+        let data = try await CloudFile.fileData(at: mtimeURL)
         let mtimeData = try JSONDecoder().decode(MTimeJSON.self, from: data)
         
         // Only scan directory if counts don't match (indicating missing items)
@@ -336,7 +337,7 @@ struct MetadataImporter {
         var allItemTimes = existingItemTimes
         let imagesURL = libraryUrl.appending(path: "images", directoryHint: .isDirectory)
         
-        guard FileManager.default.fileExists(atPath: imagesURL.path) else {
+        guard await CloudFile.fileExists(at: imagesURL) else {
             Logger.app.debug("Images directory does not exist at \(imagesURL.path)")
             return allItemTimes
         }
@@ -386,7 +387,7 @@ struct MetadataImporter {
         let metadataURL = libraryUrl
             .appending(path: "images/\(itemId).info/metadata.json", directoryHint: .notDirectory)
         
-        let data = try await dataWithoutCache(from: metadataURL)
+        let data = try await CloudFile.fileData(at: metadataURL)
         return try JSONDecoder().decode(ItemMetadataJSON.self, from: data)
     }
     
@@ -437,13 +438,14 @@ struct MetadataImporter {
         }
         
         // Copy image file
+        try await CloudFile.ensureMaterialized(at: sourceImagePath)
         try FileManager.default.copyItem(at: sourceImagePath, to: destImagePath)
         Logger.app.debug("Copied image: \(item.imagePath)")
         
         // Copy thumbnail if it exists and is different from main image
         if !item.noThumbnail {
             let sourceThumbnailPath = libraryUrl.appending(path: item.thumbnailPath, directoryHint: .notDirectory)
-            if FileManager.default.fileExists(atPath: sourceThumbnailPath.path) {
+            if await CloudFile.fileExists(at: sourceThumbnailPath) {
                 let destThumbnailPath = localUrl.appending(path: item.thumbnailPath, directoryHint: .notDirectory)
                 
                 // Remove existing thumbnail if it exists
@@ -451,6 +453,7 @@ struct MetadataImporter {
                     try FileManager.default.removeItem(at: destThumbnailPath)
                 }
                 
+                try await CloudFile.ensureMaterialized(at: sourceThumbnailPath)
                 try FileManager.default.copyItem(at: sourceThumbnailPath, to: destThumbnailPath)
                 Logger.app.debug("Copied thumbnail: \(item.thumbnailPath)")
             }
@@ -503,7 +506,7 @@ struct MetadataImporter {
         
         let metadataURL = libraryUrl.appending(path: "metadata.json", directoryHint: .notDirectory)
         
-        let data = try await dataWithoutCache(from: metadataURL)
+        let data = try await CloudFile.fileData(at: metadataURL)
         let metadata = try JSONDecoder().decode(MetadataJSON.self, from: data)
         
         try await dbWriter.write { db in
@@ -614,7 +617,7 @@ struct MetadataImporter {
             coverItemId: folderJSON.coverId,
             sortType: sortType,
             sortAscending: sortAscending,
-            sortModified: false  // Only set to true when user changes in our app
+            sortModified: false // Only set to true when user changes in our app
         )
 
         // Use save for existing folders, insert for new folders
@@ -651,13 +654,6 @@ struct MetadataImporter {
                 )
             }
         }
-    }
-    
-    private func dataWithoutCache(from url: URL) async throws -> Data {
-        var request = URLRequest(url: url)
-        request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
-        let (data, _) = try await URLSession.shared.data(for: request)
-        return data
     }
 }
 
