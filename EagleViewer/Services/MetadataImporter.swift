@@ -307,7 +307,7 @@ struct MetadataImporter {
     ) async throws -> [String: Int64] {
         let mtimeURL = libraryUrl.appending(path: "mtime.json", directoryHint: .notDirectory)
         
-        let data = try await dataWithoutCache(from: mtimeURL)
+        let data = try await CloudFile.fileData(at: mtimeURL)
         let mtimeData = try JSONDecoder().decode(MTimeJSON.self, from: data)
         
         // Only scan directory if counts don't match (indicating missing items)
@@ -387,7 +387,7 @@ struct MetadataImporter {
         let metadataURL = libraryUrl
             .appending(path: "images/\(itemId).info/metadata.json", directoryHint: .notDirectory)
         
-        let data = try await dataWithoutCache(from: metadataURL)
+        let data = try await CloudFile.fileData(at: metadataURL)
         return try JSONDecoder().decode(ItemMetadataJSON.self, from: data)
     }
     
@@ -506,7 +506,7 @@ struct MetadataImporter {
         
         let metadataURL = libraryUrl.appending(path: "metadata.json", directoryHint: .notDirectory)
         
-        let data = try await dataWithoutCache(from: metadataURL)
+        let data = try await CloudFile.fileData(at: metadataURL)
         let metadata = try JSONDecoder().decode(MetadataJSON.self, from: data)
         
         try await dbWriter.write { db in
@@ -654,13 +654,6 @@ struct MetadataImporter {
                 )
             }
         }
-    }
-    
-    private func dataWithoutCache(from url: URL) async throws -> Data {
-        var request = URLRequest(url: url)
-        request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
-        let (data, _) = try await URLSession.shared.data(for: request)
-        return data
     }
 }
 
