@@ -112,10 +112,11 @@ enum CloudFile {
     ///   such as copying the file or reading its Data contents.
     static func ensureMaterialized(at url: URL, timeout: TimeInterval = 300) async throws {
         // Quick probe
-        let (isUbiq, isCurrent) = (try? ubiquitousQuickState(url)) ?? (false, false)
-
-        // If not an iCloud item or already materialized -> nothing to do
-        guard isUbiq, !isCurrent else { return }
+        if FileManager.default.fileExists(atPath: url.path) {
+            // return if file is local or already materialized
+            let (isUbiq, isCurrent) = (try? ubiquitousQuickState(url)) ?? (false, false)
+            guard isUbiq, !isCurrent else { return }
+        }
 
         // For iCloud non-current items:
         // Step 1: coordinate a read to help create placeholder if missing
@@ -123,6 +124,20 @@ enum CloudFile {
 
         // Step 2: wait until the item is materialized (downloaded)
         _ = try await ensureMaterializedIfNeeded(at: url, timeout: timeout)
+    }
+
+    /// Minimal iOS-compatible ubiquitous state probe.
+    /// - isUbiquitous: true if the item lives in iCloud Drive
+    /// - isCurrent: true if the item is already downloaded/materialized locally
+    static func ubiquitousQuickState(_ url: URL) throws -> (isUbiquitous: Bool, isCurrent: Bool) {
+        // remove cache
+        var u = url
+        u.removeAllCachedResourceValues()
+
+        let values = try u.resourceValues(forKeys: [.isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey])
+        let isUbiq = values.isUbiquitousItem ?? false
+        let isCurrent = (values.ubiquitousItemDownloadingStatus == .current)
+        return (isUbiq, isCurrent)
     }
 
     // MARK: - Internals
@@ -140,6 +155,7 @@ enum CloudFile {
         // Poll until status becomes .current or timeout.
         let start = Date()
         while Date().timeIntervalSince(start) < timeout {
+            try Task.checkCancellation()
             try await Task.sleep(nanoseconds: 200_000_000) // 0.2s
             let (_, nowCurrent) = try ubiquitousQuickState(url)
             if nowCurrent { return true }
@@ -161,20 +177,6 @@ enum CloudFile {
                 cont.resume(returning: ())
             }
         }
-    }
-
-    /// Minimal iOS-compatible ubiquitous state probe.
-    /// - isUbiquitous: true if the item lives in iCloud Drive
-    /// - isCurrent: true if the item is already downloaded/materialized locally
-    private static func ubiquitousQuickState(_ url: URL) throws -> (isUbiquitous: Bool, isCurrent: Bool) {
-        // remove cache
-        var u = url
-        u.removeAllCachedResourceValues()
-
-        let values = try u.resourceValues(forKeys: [.isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey])
-        let isUbiq = values.isUbiquitousItem ?? false
-        let isCurrent = (values.ubiquitousItemDownloadingStatus == .current)
-        return (isUbiq, isCurrent)
     }
 
     /// Return whether the URL is a directory (placeholder or materialized)
