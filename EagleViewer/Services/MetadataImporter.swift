@@ -178,7 +178,8 @@ struct MetadataImporter {
             var processedItems = 0
             
             // Process items in batches, each in its own transaction
-            for batch in itemsToUpdate.chunks(ofSize: 100) {
+            let batchSize = localUrl == nil ? 100 : 10
+            for batch in itemsToUpdate.chunks(ofSize: batchSize) {
                 // Load metadata for all items in batch first
                 let batchMetadata: [(itemId: String, metadata: ItemMetadataJSON)] = try await withThrowingTaskGroup(of: (String, ItemMetadataJSON).self) { group in
                     for itemId in batch {

@@ -167,7 +167,11 @@ enum CloudFile {
     /// - isUbiquitous: true if the item lives in iCloud Drive
     /// - isCurrent: true if the item is already downloaded/materialized locally
     private static func ubiquitousQuickState(_ url: URL) throws -> (isUbiquitous: Bool, isCurrent: Bool) {
-        let values = try url.resourceValues(forKeys: [.isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey])
+        // remove cache
+        var u = url
+        u.removeAllCachedResourceValues()
+
+        let values = try u.resourceValues(forKeys: [.isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey])
         let isUbiq = values.isUbiquitousItem ?? false
         let isCurrent = (values.ubiquitousItemDownloadingStatus == .current)
         return (isUbiq, isCurrent)
