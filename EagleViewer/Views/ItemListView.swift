@@ -21,6 +21,18 @@ struct ItemListView: View {
         self.placeholderType = placeholderType
     }
 
+    private func needShowType(item: Item) -> Bool {
+        if ItemVideoView.isVideo(item: item) {
+            return true
+        }
+
+        if item.ext == "webp" || item.ext == "gif" {
+            return true
+        }
+
+        return false
+    }
+
     var body: some View {
         if items.isEmpty && placeholderType != .none {
             switch placeholderType {
@@ -40,7 +52,7 @@ struct ItemListView: View {
                             .aspectRatio(1, contentMode: .fill)
                             .clipped()
                             .contentShape(Rectangle())
-                            .if(ItemVideoView.isVideo(item: item)) { view in
+                            .if(needShowType(item: item)) { view in
                                 view.overlay(alignment: .topLeading) {
                                     Text(item.ext.uppercased())
                                         .font(.caption2.weight(.semibold))
