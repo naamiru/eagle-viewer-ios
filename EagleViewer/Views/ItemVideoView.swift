@@ -14,16 +14,13 @@ struct ItemVideoView: View {
     }
 
     let item: Item
-    let dismiss: () -> Void
+    @Binding var isNoUI: Bool
 
     @State private var player: AVQueuePlayer?
     @State private var playerLooper: AVPlayerLooper?
     @State private var isLoading = false
     @State private var loadTask: Task<Void, Never>?
     @State private var loadTaskID: UUID?
-
-    @State private var showCloseButton = true
-    @State private var hideButtonTask: Task<Void, Never>?
 
     @EnvironmentObject private var imageViewerManager: ImageViewerManager
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
@@ -45,58 +42,19 @@ struct ItemVideoView: View {
             ProgressView()
                 .progressViewStyle(.circular)
                 .tint(.white)
-
-            VStack {
-                HStack {
-                    Button(action: {
-                        dismiss()
-                    }) {
-                        Image(systemName: "chevron.down")
-                            .foregroundColor(.white)
-                    }
-
-                    Spacer()
-                }
-                .padding()
-
-                Spacer()
-            }
         }
     }
 
     var body: some View {
         Group {
             if let player {
-                VideoPlayer(player: player) {
-                    if showCloseButton {
-                        VStack {
-                            HStack {
-                                Button(action: {
-                                    dismiss()
-                                }) {
-                                    Image(systemName: "chevron.down")
-                                        .foregroundColor(.white)
-                                }
-
-                                Spacer()
-                            }
-                            .padding()
-
-                            Spacer()
-                        }
-                        .transition(.opacity) // not working
+                VideoPlayer(player: player)
+                    .onAppear {
+                        player.play()
                     }
-                }
-                .ignoresSafeArea()
-                .simultaneousGesture(tapShowButtonGesture())
-                .simultaneousGesture(dragCloseGesture())
-                .onAppear {
-                    player.play()
-                    scheduleButtonHide()
-                }
-                .onDisappear {
-                    player.pause()
-                }
+                    .onDisappear {
+                        player.pause()
+                    }
             } else {
                 placeholder
             }
@@ -113,48 +71,6 @@ struct ItemVideoView: View {
             loadTaskID = nil
             isLoading = false
             player?.pause()
-        }
-    }
-
-    private func dragCloseGesture() -> some Gesture {
-        DragGesture()
-            .onEnded { value in
-                let w = abs(value.translation.width), h = value.translation.height
-                if h > 10, w < 20, w / h < 0.2 {
-                    dismiss()
-                }
-            }
-    }
-
-    private func tapShowButtonGesture() -> some Gesture {
-        TapGesture()
-            .onEnded { _ in
-                hideButtonTask?.cancel()
-
-                // show close button after 0.5sec
-                hideButtonTask = Task {
-                    try? await Task.sleep(nanoseconds: 500_000_000)
-
-                    if !Task.isCancelled {
-                        showCloseButton = true
-                        scheduleButtonHide()
-                    }
-                }
-            }
-    }
-
-    private func scheduleButtonHide() {
-        hideButtonTask?.cancel()
-
-        // hide close button after 5sec
-        hideButtonTask = Task {
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
-
-            if !Task.isCancelled {
-                withAnimation {
-                    showCloseButton = false
-                }
-            }
         }
     }
 
