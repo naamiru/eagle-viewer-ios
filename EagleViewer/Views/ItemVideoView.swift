@@ -80,7 +80,6 @@ struct ItemVideoView: View {
                     }
                 ),
                 range: sliderRange,
-                isDarkBackground: isNoUI,
                 onEditingChanged: handleSliderEditingChanged
             )
         }
@@ -491,7 +490,6 @@ struct ItemVideoView: View {
 private struct PhotosStyleSeekBar: View {
     @Binding var value: Double
     let range: ClosedRange<Double>
-    let isDarkBackground: Bool
     let onEditingChanged: (Bool) -> Void
 
     @State private var isDragging = false
@@ -515,20 +513,6 @@ private struct PhotosStyleSeekBar: View {
 
     private var currentHeight: CGFloat { isDragging ? activeHeight : idleHeight }
 
-    private var baseTrackColor: Color {
-        if isDarkBackground {
-            return Color.white.opacity(0.22)
-        }
-        return Color.black.opacity(0.15)
-    }
-
-    private var innerTrackColor: Color {
-        if isDarkBackground {
-            return Color.white.opacity(0.08)
-        }
-        return Color.black.opacity(0.05)
-    }
-
     var body: some View {
         GeometryReader { geometry in
             let width = max(geometry.size.width, 1)
@@ -536,10 +520,10 @@ private struct PhotosStyleSeekBar: View {
 
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(baseTrackColor)
+                    .fill(Color.black.opacity(0.15))
 
                 Capsule()
-                    .fill(innerTrackColor)
+                    .fill(Color.black.opacity(0.05))
 
                 Capsule()
                     .fill(Color.accentColor)
