@@ -50,14 +50,14 @@ struct ImageDetailView: View {
         
         if currentIndex > 0 {
             let prevItem = items[currentIndex - 1]
-            if let prevURL = getImageURL(for: prevItem) {
+            if !ItemVideoView.isVideo(item: prevItem), let prevURL = getImageURL(for: prevItem) {
                 urlsToPrefetch.append(prevURL)
             }
         }
         
         if currentIndex < items.count - 1 {
             let nextItem = items[currentIndex + 1]
-            if let nextURL = getImageURL(for: nextItem) {
+            if !ItemVideoView.isVideo(item: nextItem), let nextURL = getImageURL(for: nextItem) {
                 urlsToPrefetch.append(nextURL)
             }
         }
