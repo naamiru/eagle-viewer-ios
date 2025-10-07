@@ -6,8 +6,8 @@
 //
 
 import AVFoundation
-import AVKit
 import SwiftUI
+import UIKit
 
 struct ItemVideoView: View {
     static func isVideo(item: Item) -> Bool {
@@ -60,7 +60,9 @@ struct ItemVideoView: View {
             value: Binding(
                 get: { currentTime },
                 set: { newValue in
-                    currentTime = min(max(newValue, sliderRange.lowerBound), sliderRange.upperBound)
+                    let clamped = min(max(newValue, sliderRange.lowerBound), sliderRange.upperBound)
+                    currentTime = clamped
+                    seek(to: clamped)
                 }
             ),
             in: sliderRange,
@@ -68,7 +70,7 @@ struct ItemVideoView: View {
         )
         .tint(.accentColor)
         .padding(.horizontal, 24)
-        .padding(.bottom, 28)
+        .padding(.bottom, 78)
     }
 
     var body: some View {
@@ -78,7 +80,7 @@ struct ItemVideoView: View {
 
             Group {
                 if let player {
-                    VideoPlayer(player: player)
+                    PlayerLayerView(player: player, isDarkBackground: isNoUI)
                         .allowsHitTesting(false)
                         .onAppear {
                             player.play()
@@ -243,5 +245,42 @@ struct ItemVideoView: View {
         guard let player, let token = timeObserverToken else { return }
         player.removeTimeObserver(token)
         timeObserverToken = nil
+    }
+}
+
+private struct PlayerLayerView: UIViewRepresentable {
+    let player: AVQueuePlayer
+    let isDarkBackground: Bool
+
+    func makeUIView(context: Context) -> PlayerLayerContainerView {
+        let view = PlayerLayerContainerView()
+        view.playerLayer.player = player
+        view.playerLayer.videoGravity = .resizeAspect
+        view.applyBackgroundColor(isDarkBackground: isDarkBackground)
+        return view
+    }
+
+    func updateUIView(_ uiView: PlayerLayerContainerView, context: Context) {
+        if uiView.playerLayer.player !== player {
+            uiView.playerLayer.player = player
+        }
+        uiView.applyBackgroundColor(isDarkBackground: isDarkBackground)
+    }
+}
+
+private final class PlayerLayerContainerView: UIView {
+    override static var layerClass: AnyClass { AVPlayerLayer.self }
+
+    var playerLayer: AVPlayerLayer {
+        guard let layer = layer as? AVPlayerLayer else {
+            fatalError("Unexpected layer type for PlayerLayerContainerView")
+        }
+        return layer
+    }
+
+    func applyBackgroundColor(isDarkBackground: Bool) {
+        let color: UIColor = isDarkBackground ? .black : .white
+        backgroundColor = color
+        playerLayer.backgroundColor = color.cgColor
     }
 }
