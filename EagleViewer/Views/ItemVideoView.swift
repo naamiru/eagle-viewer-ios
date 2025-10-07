@@ -57,7 +57,7 @@ struct ItemVideoView: View {
     }
 
     private var seekBar: some View {
-        Slider(
+        PhotosStyleSeekBar(
             value: Binding(
                 get: { currentTime },
                 set: { newValue in
@@ -66,13 +66,13 @@ struct ItemVideoView: View {
                     seek(to: clamped)
                 }
             ),
-            in: sliderRange,
+            range: sliderRange,
+            isDarkBackground: isNoUI,
             onEditingChanged: handleSliderEditingChanged
         )
-        .tint(.accentColor)
         .padding(.leading, rootSafeAreaInsets.leading + 20)
         .padding(.trailing, rootSafeAreaInsets.trailing + 20)
-        .padding(.bottom, rootSafeAreaInsets.bottom + 60)
+        .padding(.bottom, rootSafeAreaInsets.bottom + 40)
     }
 
     var body: some View {
@@ -247,6 +247,95 @@ struct ItemVideoView: View {
         guard let player, let token = timeObserverToken else { return }
         player.removeTimeObserver(token)
         timeObserverToken = nil
+    }
+}
+
+private struct PhotosStyleSeekBar: View {
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let isDarkBackground: Bool
+    let onEditingChanged: (Bool) -> Void
+
+    @State private var isDragging = false
+
+    private let idleHeight: CGFloat = 6
+    private let activeHeight: CGFloat = 12
+
+    private var normalizedValue: Double {
+        let lower = range.lowerBound
+        let upper = range.upperBound
+        let span = upper - lower
+        guard span > 0 else { return 0 }
+        let clampedValue = min(max(value, lower), upper)
+        return (clampedValue - lower) / span
+    }
+
+    private var currentHeight: CGFloat { isDragging ? activeHeight : idleHeight }
+
+    private var baseTrackColor: Color {
+        if isDarkBackground {
+            return Color.white.opacity(0.22)
+        }
+        return Color.black.opacity(0.15)
+    }
+
+    private var innerTrackColor: Color {
+        if isDarkBackground {
+            return Color.white.opacity(0.08)
+        }
+        return Color.black.opacity(0.05)
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            let width = max(geometry.size.width, 1)
+            let progressWidth = max(CGFloat(normalizedValue) * width, currentHeight)
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(baseTrackColor)
+
+                Capsule()
+                    .fill(innerTrackColor)
+
+                Capsule()
+                    .fill(Color.accentColor)
+                    .frame(width: progressWidth)
+            }
+            .frame(height: currentHeight)
+            .frame(maxHeight: .infinity, alignment: .center)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { gesture in
+                        let newValue = mappedValue(for: gesture.location.x, width: width)
+                        if !isDragging {
+                            isDragging = true
+                            onEditingChanged(true)
+                        }
+                        value = newValue
+                    }
+                    .onEnded { gesture in
+                        let newValue = mappedValue(for: gesture.location.x, width: width)
+                        value = newValue
+                        isDragging = false
+                        onEditingChanged(false)
+                    }
+            )
+        }
+        .frame(height: 44)
+        .animation(.easeInOut(duration: 0.16), value: isDragging)
+    }
+
+    private func mappedValue(for locationX: CGFloat, width: CGFloat) -> Double {
+        guard width > 0 else { return value }
+        let clampedX = min(max(locationX, 0), width)
+        let ratio = Double(clampedX / width)
+        let lower = range.lowerBound
+        let upper = range.upperBound
+        let span = upper - lower
+        guard span > 0 else { return lower }
+        return lower + (ratio * span)
     }
 }
 
