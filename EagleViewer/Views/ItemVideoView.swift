@@ -495,9 +495,14 @@ private struct PhotosStyleSeekBar: View {
     let onEditingChanged: (Bool) -> Void
 
     @State private var isDragging = false
+    @State private var dragStartValue: Double = 0
+    @State private var scrubbingMultiplier: Double = 1
+    @State private var lastGestureValue: Double = 0
+    @State private var lastGestureLocationX: CGFloat = 0
 
     private let idleHeight: CGFloat = 6
     private let activeHeight: CGFloat = 12
+    private let verticalSensitivity: CGFloat = 50
 
     private var normalizedValue: Double {
         let lower = range.lowerBound
@@ -546,17 +551,29 @@ private struct PhotosStyleSeekBar: View {
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { gesture in
-                        let newValue = mappedValue(for: gesture.location.x, width: width)
                         if !isDragging {
                             isDragging = true
+                            dragStartValue = mappedValue(for: gesture.startLocation.x, width: width)
+                            value = dragStartValue
+                            lastGestureValue = dragStartValue
+                            lastGestureLocationX = gesture.startLocation.x
                             onEditingChanged(true)
                         }
+                        let step = scrubbingStep(for: gesture.translation.height)
+                        scrubbingMultiplier = Double(step)
+                        let newValue = incrementalMappedValue(for: gesture.location.x, width: width)
                         value = newValue
+                        lastGestureValue = newValue
+                        lastGestureLocationX = gesture.location.x
                     }
                     .onEnded { gesture in
-                        let newValue = mappedValue(for: gesture.location.x, width: width)
-                        value = newValue
+                        let step = scrubbingStep(for: gesture.translation.height)
+                        scrubbingMultiplier = Double(step)
+                        let finalValue = incrementalMappedValue(for: gesture.location.x, width: width)
+                        value = finalValue
                         isDragging = false
+                        scrubbingMultiplier = 1
+                        lastGestureLocationX = gesture.location.x
                         onEditingChanged(false)
                     }
             )
@@ -574,6 +591,24 @@ private struct PhotosStyleSeekBar: View {
         let span = upper - lower
         guard span > 0 else { return lower }
         return lower + (ratio * span)
+    }
+
+    private func incrementalMappedValue(for locationX: CGFloat, width: CGFloat) -> Double {
+        guard width > 0 else { return value }
+        let span = range.upperBound - range.lowerBound
+        guard span > 0 else { return range.lowerBound }
+
+        let deltaX = locationX - lastGestureLocationX
+        let horizontalDelta = Double(deltaX / width)
+        let incrementalRatio = horizontalDelta / scrubbingMultiplier
+        let proposed = lastGestureValue + incrementalRatio * span
+        return min(max(proposed, range.lowerBound), range.upperBound)
+    }
+
+    private func scrubbingStep(for translationHeight: CGFloat) -> Int {
+        let offset = max(0, abs(translationHeight))
+        let additional = Int(floor(offset / verticalSensitivity))
+        return max(1, additional + 1)
     }
 }
 
