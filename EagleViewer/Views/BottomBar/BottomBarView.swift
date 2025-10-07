@@ -32,6 +32,7 @@ struct BottomBarView: View, KeyboardReadable {
                                     .glassEffectUnion(id: "tools", namespace: namespace)
                             }
                             .contentShape(RoundedRectangle(cornerRadius: 25))
+                            .simultaneousGesture(TapGesture().onEnded {})
                         }
                     } else {
                         HStack {
@@ -41,6 +42,8 @@ struct BottomBarView: View, KeyboardReadable {
                                 .frame(width: 44, height: 44)
                         }
                         .regularGlassEffect(interactive: false)
+                        .contentShape(RoundedRectangle(cornerRadius: 25))
+                        .simultaneousGesture(TapGesture().onEnded {})
                     }
 
                     Spacer()
