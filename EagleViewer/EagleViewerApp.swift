@@ -38,27 +38,34 @@ struct EagleViewerApp: App {
 
     var body: some Scene {
         WindowGroup {
-            switch repositories {
-            case .success(let repos):
-                ContentView()
-                    .repositories(repos)
-                    .environmentObject(SettingsManager.shared)
-                    .environmentObject(LibraryFolderManager.shared)
-                    .environmentObject(metadataImportManager)
-                    .environmentObject(EventCenter.shared)
-                    .detectOrientation()
-                    .onChange(of: scenePhase) { _, newPhase in
-                        switch newPhase {
-                        case .active:
-                            LibraryFolderManager.shared.resumeAccess()
-                        case .background:
-                            LibraryFolderManager.shared.stopAccess()
-                        default:
-                            break
-                        }
+            GeometryReader { proxy in
+                let rootSafeAreaInsets = proxy.safeAreaInsets
+
+                Group {
+                    switch repositories {
+                    case .success(let repos):
+                        ContentView()
+                            .repositories(repos)
+                            .environmentObject(SettingsManager.shared)
+                            .environmentObject(LibraryFolderManager.shared)
+                            .environmentObject(metadataImportManager)
+                            .environmentObject(EventCenter.shared)
+                            .detectOrientation()
+                            .onChange(of: scenePhase) { _, newPhase in
+                                switch newPhase {
+                                case .active:
+                                    LibraryFolderManager.shared.resumeAccess()
+                                case .background:
+                                    LibraryFolderManager.shared.stopAccess()
+                                default:
+                                    break
+                                }
+                            }
+                    case .failure(let error):
+                        AppErrorView(error: error)
                     }
-            case .failure(let error):
-                AppErrorView(error: error)
+                }
+                .environment(\.rootSafeAreaInsets, rootSafeAreaInsets)
             }
         }
     }

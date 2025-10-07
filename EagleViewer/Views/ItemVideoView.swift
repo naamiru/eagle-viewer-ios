@@ -29,6 +29,7 @@ struct ItemVideoView: View {
 
     @EnvironmentObject private var imageViewerManager: ImageViewerManager
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
+    @Environment(\.rootSafeAreaInsets) private var rootSafeAreaInsets
 
     private var videoURL: URL? {
         guard let currentLibraryURL = libraryFolderManager.currentLibraryURL else {
@@ -69,8 +70,9 @@ struct ItemVideoView: View {
             onEditingChanged: handleSliderEditingChanged
         )
         .tint(.accentColor)
-        .padding(.horizontal, 24)
-        .padding(.bottom, 78)
+        .padding(.leading, rootSafeAreaInsets.leading + 20)
+        .padding(.trailing, rootSafeAreaInsets.trailing + 20)
+        .padding(.bottom, rootSafeAreaInsets.bottom + 60)
     }
 
     var body: some View {
