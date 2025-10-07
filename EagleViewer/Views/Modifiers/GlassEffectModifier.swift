@@ -21,12 +21,15 @@ struct RegularGlassEffectModifier: ViewModifier {
             }
         } else {
             let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
-            let baseColor = Color(.systemGray6)
-            let pressedColor = Color(white: 0.96)
+            let highlightColor = Color(white: 0.96)
 
             if interactive {
                 content
-                    .background(shape.fill(isPressed ? pressedColor : baseColor))
+                    .background(.thinMaterial, in: shape)
+                    .overlay(
+                        shape
+                            .fill(highlightColor.opacity(isPressed ? 0.45 : 0))
+                    )
                     .animation(.easeInOut(duration: 0.15), value: isPressed)
                     .simultaneousGesture(
                         DragGesture(minimumDistance: 0)
@@ -36,7 +39,7 @@ struct RegularGlassEffectModifier: ViewModifier {
                     )
             } else {
                 content
-                    .background(shape.fill(baseColor))
+                    .background(.thinMaterial, in: shape)
             }
         }
     }
