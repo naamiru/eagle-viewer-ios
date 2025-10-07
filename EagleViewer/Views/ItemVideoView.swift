@@ -32,6 +32,7 @@ struct ItemVideoView: View {
     @State private var playerCleanupTask: Task<Void, Never>?
     @State private var isThumbnailLoaded = false
     @State private var isPlaying = false
+    @State private var wasPlayingBeforeScrub = false
 
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
     @Environment(\.rootSafeAreaInsets) private var rootSafeAreaInsets
@@ -91,22 +92,11 @@ struct ItemVideoView: View {
             Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(Color.accentColor)
-                .frame(width: 40, height: 40)
-                .background(
-                    Circle().fill(buttonBackgroundColor)
-                )
+                .frame(width: 44, height: 44)
         }
-        .buttonStyle(.plain)
+        .contentShape(.circle)
+        .glassEffect(.regular.interactive(), in: Circle())
         .disabled(player == nil && !isPlayerVisible)
-        .opacity((player != nil || isPlayerVisible) ? 1 : 0.6)
-    }
-
-    private var buttonBackgroundColor: Color {
-        if isNoUI {
-            return Color.white.opacity(0.2)
-        } else {
-            return Color.black.opacity(0.12)
-        }
     }
 
     @ViewBuilder
@@ -396,10 +386,14 @@ struct ItemVideoView: View {
         isScrubbing = isEditing
 
         if isEditing {
+            wasPlayingBeforeScrub = isPlaying
             pausePlayback()
         } else {
             seek(to: currentTime)
-            resumePlayback()
+            if wasPlayingBeforeScrub {
+                resumePlayback()
+            }
+            wasPlayingBeforeScrub = false
         }
     }
 
