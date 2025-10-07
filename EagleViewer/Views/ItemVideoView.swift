@@ -85,8 +85,8 @@ struct ItemVideoView: View {
         }
     }
 
-    private var seekBarOpacity: Double {
-        (isSelected && !isNoUI && duration > 0) ? 1 : 0
+    private var isPlaybackControlsVisible: Bool {
+        isSelected && !isNoUI && duration > 0
     }
 
     private var playbackControls: some View {
@@ -198,11 +198,12 @@ struct ItemVideoView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            playbackControls
-                .opacity(seekBarOpacity)
-                .animation(.easeInOut(duration: 0.2), value: seekBarOpacity)
-                .allowsHitTesting(seekBarOpacity > 0)
+            if isPlaybackControlsVisible {
+                playbackControls
+                    .transition(.opacity)
+            }
         }
+        .animation(.easeInOut(duration: 0.2), value: isPlaybackControlsVisible)
         .onAppear {
             if isSelected {
                 prepareVideoPlayer()
