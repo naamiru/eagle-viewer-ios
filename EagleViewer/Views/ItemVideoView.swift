@@ -31,6 +31,7 @@ struct ItemVideoView: View {
     @State private var isPlayerVisible = false
     @State private var playerCleanupTask: Task<Void, Never>?
     @State private var isThumbnailLoaded = false
+    @State private var isPlaying = false
 
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
     @Environment(\.rootSafeAreaInsets) private var rootSafeAreaInsets
@@ -69,13 +70,43 @@ struct ItemVideoView: View {
             isDarkBackground: isNoUI,
             onEditingChanged: handleSliderEditingChanged
         )
+    }
+
+    private var seekBarOpacity: Double {
+        (isSelected && !isNoUI && duration > 0) ? 1 : 0
+    }
+
+    private var playbackControls: some View {
+        HStack(alignment: .center, spacing: 16) {
+            playbackButton
+            seekBar
+        }
         .padding(.leading, rootSafeAreaInsets.leading + 20)
         .padding(.trailing, rootSafeAreaInsets.trailing + 20)
         .padding(.bottom, rootSafeAreaInsets.bottom + 40)
     }
 
-    private var seekBarOpacity: Double {
-        (isSelected && !isNoUI && duration > 0) ? 1 : 0
+    private var playbackButton: some View {
+        Button(action: togglePlayback) {
+            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 40, height: 40)
+                .background(
+                    Circle().fill(buttonBackgroundColor)
+                )
+        }
+        .buttonStyle(.plain)
+        .disabled(player == nil && !isPlayerVisible)
+        .opacity((player != nil || isPlayerVisible) ? 1 : 0.6)
+    }
+
+    private var buttonBackgroundColor: Color {
+        if isNoUI {
+            return Color.white.opacity(0.2)
+        } else {
+            return Color.black.opacity(0.12)
+        }
     }
 
     @ViewBuilder
@@ -121,10 +152,10 @@ struct ItemVideoView: View {
                 PlayerLayerView(player: player, isDarkBackground: isNoUI)
                     .allowsHitTesting(false)
                     .onAppear {
-                        player.play()
+                        resumePlayback()
                     }
                     .onDisappear {
-                        player.pause()
+                        pausePlayback()
                     }
             }
 
@@ -160,9 +191,10 @@ struct ItemVideoView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            seekBar
+            playbackControls
                 .opacity(seekBarOpacity)
                 .animation(.easeInOut(duration: 0.2), value: seekBarOpacity)
+                .allowsHitTesting(seekBarOpacity > 0)
         }
         .onAppear {
             if isSelected {
@@ -255,6 +287,7 @@ struct ItemVideoView: View {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isPlayerVisible = true
                     }
+                    resumePlayback()
                 }
             } catch {
                 await MainActor.run {
@@ -276,7 +309,7 @@ struct ItemVideoView: View {
         loadTaskID = nil
         isLoading = false
         removeTimeObserver(from: player)
-        player?.pause()
+        pausePlayback()
         beginPlayerFadeOut()
     }
 
@@ -284,6 +317,7 @@ struct ItemVideoView: View {
         cancelPendingPlayerCleanup()
         let shouldAnimate = isPlayerVisible || player != nil
         isScrubbing = false
+        isPlaying = false
 
         if shouldAnimate {
             withAnimation(.easeInOut(duration: 0.18)) {
@@ -321,6 +355,34 @@ struct ItemVideoView: View {
         duration = 0
     }
 
+    private func togglePlayback() {
+        if isPlaying {
+            pausePlayback()
+        } else {
+            resumePlayback()
+        }
+    }
+
+    private func pausePlayback() {
+        guard let player else {
+            isPlaying = false
+            return
+        }
+
+        player.pause()
+        isPlaying = false
+    }
+
+    private func resumePlayback() {
+        guard let player else {
+            isPlaying = false
+            return
+        }
+
+        player.play()
+        isPlaying = true
+    }
+
     private func needsMaterialization(for url: URL) -> Bool {
         if !FileManager.default.fileExists(atPath: url.path) {
             return true
@@ -331,15 +393,13 @@ struct ItemVideoView: View {
     }
 
     private func handleSliderEditingChanged(_ isEditing: Bool) {
-        guard let player else { return }
-
         isScrubbing = isEditing
 
         if isEditing {
-            player.pause()
+            pausePlayback()
         } else {
             seek(to: currentTime)
-            player.play()
+            resumePlayback()
         }
     }
 
