@@ -180,7 +180,7 @@ struct ItemVideoView: View {
     }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottom) {
             backgroundColor
                 .ignoresSafeArea()
                 .animation(.easeInOut(duration: 0.25), value: isNoUI)
@@ -189,6 +189,7 @@ struct ItemVideoView: View {
 
             if isSelected {
                 Color.clear
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         withAnimation(.easeInOut(duration: 0.2)) {
@@ -196,14 +197,15 @@ struct ItemVideoView: View {
                         }
                     }
             }
-        }
-        .overlay(alignment: .bottom) {
-            if isPlaybackControlsVisible {
-                playbackControls
-                    .transition(.opacity)
+
+            Group {
+                if isPlaybackControlsVisible {
+                    playbackControls
+                        .transition(.opacity)
+                }
             }
+            .animation(.easeInOut(duration: 0.2), value: isPlaybackControlsVisible)
         }
-        .animation(.easeInOut(duration: 0.2), value: isPlaybackControlsVisible)
         .onAppear {
             if isSelected {
                 prepareVideoPlayer()
