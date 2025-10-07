@@ -529,7 +529,7 @@ private struct PhotosStyleSeekBar: View {
 
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color.black.opacity(0.15))
+                    .fill(.thinMaterial)
 
                 Capsule()
                     .fill(Color.black.opacity(0.05))
