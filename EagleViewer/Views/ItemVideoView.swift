@@ -171,8 +171,9 @@ struct ItemVideoView: View {
 
     var body: some View {
         ZStack {
-            (isNoUI ? Color.black : Color.white)
+            backgroundColor
                 .ignoresSafeArea()
+                .animation(.easeInOut(duration: 0.25), value: isNoUI)
 
             activeVideoContent
 
@@ -431,6 +432,10 @@ struct ItemVideoView: View {
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
     }
 
+    private var backgroundColor: Color {
+        isNoUI ? .black : .white
+    }
+
     private func installTimeObserver(for player: AVQueuePlayer) {
         let interval = CMTime(seconds: 0.25, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
         timeObserverToken = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { time in
@@ -547,7 +552,7 @@ private struct PlayerLayerView: UIViewRepresentable {
         let view = PlayerLayerContainerView()
         view.playerLayer.player = player
         view.playerLayer.videoGravity = .resizeAspect
-        view.applyBackgroundColor(isDarkBackground: isDarkBackground)
+        view.applyBackgroundColor(isDarkBackground: isDarkBackground, animated: false)
         return view
     }
 
@@ -555,7 +560,7 @@ private struct PlayerLayerView: UIViewRepresentable {
         if uiView.playerLayer.player !== player {
             uiView.playerLayer.player = player
         }
-        uiView.applyBackgroundColor(isDarkBackground: isDarkBackground)
+        uiView.applyBackgroundColor(isDarkBackground: isDarkBackground, animated: true)
     }
 }
 
@@ -569,9 +574,25 @@ private final class PlayerLayerContainerView: UIView {
         return layer
     }
 
-    func applyBackgroundColor(isDarkBackground: Bool) {
+    private var currentBackgroundColor: UIColor?
+
+    func applyBackgroundColor(isDarkBackground: Bool, animated: Bool) {
         let color: UIColor = isDarkBackground ? .black : .white
-        backgroundColor = color
-        playerLayer.backgroundColor = color.cgColor
+
+        guard color != currentBackgroundColor else { return }
+        currentBackgroundColor = color
+
+        let updates = {
+            self.backgroundColor = color
+            self.playerLayer.backgroundColor = color.cgColor
+        }
+
+        if animated {
+            UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseInOut]) {
+                updates()
+            }
+        } else {
+            updates()
+        }
     }
 }
