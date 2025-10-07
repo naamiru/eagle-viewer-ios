@@ -89,7 +89,7 @@ struct FirstLaunchInfoView: View {
                             .frame(maxWidth: .infinity)
                     }
                 }
-                .buttonStyle(.glassProminent)
+                .glassProminentButton()
                 .controlSize(.large)
                 .disabled(isLoading)
 

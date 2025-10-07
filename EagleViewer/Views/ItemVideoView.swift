@@ -116,7 +116,7 @@ struct ItemVideoView: View {
                 .frame(width: 44, height: 44)
         }
         .contentShape(.circle)
-        .glassEffect(.regular.interactive(), in: Circle())
+        .regularGlassEffect(interactive: true)
         .disabled(player == nil && !isPlayerVisible)
     }
 

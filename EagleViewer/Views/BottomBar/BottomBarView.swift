@@ -21,16 +21,26 @@ struct BottomBarView: View, KeyboardReadable {
 
                     Spacer()
 
-                    GlassEffectContainer {
+                    if #available(iOS 26.0, *) {
+                        GlassEffectContainer {
+                            HStack {
+                                SortMenu()
+                                    .buttonStyle(.glass)
+                                    .glassEffectUnion(id: "tools", namespace: namespace)
+                                LayoutMenu()
+                                    .buttonStyle(.glass)
+                                    .glassEffectUnion(id: "tools", namespace: namespace)
+                            }
+                            .contentShape(RoundedRectangle(cornerRadius: 25))
+                        }
+                    } else {
                         HStack {
                             SortMenu()
-                                .buttonStyle(.glass)
-                                .glassEffectUnion(id: "tools", namespace: namespace)
+                                .frame(width: 44, height: 44)
                             LayoutMenu()
-                                .buttonStyle(.glass)
-                                .glassEffectUnion(id: "tools", namespace: namespace)
+                                .frame(width: 44, height: 44)
                         }
-                        .contentShape(RoundedRectangle(cornerRadius: 25))
+                        .regularGlassEffect(interactive: false)
                     }
 
                     Spacer()
@@ -67,7 +77,7 @@ struct HomeButton: View {
         .disabled(isDisabled)
         .frame(width: 44, height: 44)
         .contentShape(.circle)
-        .glassEffect(isDisabled ? .regular : .regular.interactive())
+        .regularGlassEffect(interactive: !isDisabled)
     }
 }
 
@@ -203,6 +213,6 @@ struct SearchButton: View {
                 .padding(.horizontal)
         }
         .contentShape(RoundedRectangle(cornerRadius: 22))
-        .glassEffect(.regular.interactive())
+        .regularGlassEffect(interactive: true)
     }
 }

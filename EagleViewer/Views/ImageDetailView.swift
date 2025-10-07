@@ -95,7 +95,7 @@ struct ImageDetailView: View {
                 }
                 .frame(width: 44, height: 44)
                 .contentShape(.circle)
-                .glassEffect(.regular.interactive())
+                .regularGlassEffect(interactive: true)
                 
                 Spacer()
                 
@@ -113,7 +113,7 @@ struct ImageDetailView: View {
                 .padding(.horizontal)
                 .frame(height: 44)
                 .contentShape(RoundedRectangle(cornerRadius: 22))
-                .glassEffect(.regular.interactive())
+                .regularGlassEffect(interactive: true)
                 
                 Spacer()
                 
@@ -124,7 +124,7 @@ struct ImageDetailView: View {
                     }
                     .frame(width: 44, height: 44)
                     .contentShape(.circle)
-                    .glassEffect(.regular.interactive())
+                    .regularGlassEffect(interactive: true)
                 }
             }
             Spacer()

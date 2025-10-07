@@ -108,7 +108,7 @@ struct LibraryFolderSelectView: View {
                                 .frame(maxWidth: .infinity)
                         }
                     }
-                    .buttonStyle(.glassProminent)
+                    .glassProminentButton()
                     .controlSize(.large)
                     .disabled(isProcessing)
                     
