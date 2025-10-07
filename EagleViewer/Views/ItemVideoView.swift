@@ -34,6 +34,9 @@ struct ItemVideoView: View {
     @State private var isPlaying = false
     @State private var wasPlayingBeforeScrub = false
     @State private var wasPlayingBeforeBackground = false
+    @State private var lastObservedTime: Double = 0
+    @State private var lastObservationDate: Date = .now
+    @State private var lastObservedRate: Double = 0
 
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
     @Environment(\.rootSafeAreaInsets) private var rootSafeAreaInsets
@@ -60,19 +63,27 @@ struct ItemVideoView: View {
     }
 
     private var seekBar: some View {
-        PhotosStyleSeekBar(
-            value: Binding(
-                get: { currentTime },
-                set: { newValue in
-                    let clamped = min(max(newValue, sliderRange.lowerBound), sliderRange.upperBound)
-                    currentTime = clamped
-                    seek(to: clamped)
-                }
-            ),
-            range: sliderRange,
-            isDarkBackground: isNoUI,
-            onEditingChanged: handleSliderEditingChanged
-        )
+        TimelineView(.animation) { context in
+            PhotosStyleSeekBar(
+                value: Binding(
+                    get: {
+                        if isScrubbing {
+                            return currentTime
+                        }
+                        return interpolatedTime(at: context.date)
+                    },
+                    set: { newValue in
+                        let clamped = min(max(newValue, sliderRange.lowerBound), sliderRange.upperBound)
+                        currentTime = clamped
+                        seek(to: clamped)
+                        updateObservationSnapshot(time: clamped, rate: 0)
+                    }
+                ),
+                range: sliderRange,
+                isDarkBackground: isNoUI,
+                onEditingChanged: handleSliderEditingChanged
+            )
+        }
     }
 
     private var seekBarOpacity: Double {
@@ -280,6 +291,7 @@ struct ItemVideoView: View {
                     playerLooper = AVPlayerLooper(player: queuePlayer, templateItem: playerItem)
                     duration = assetDuration.seconds.isFinite ? max(assetDuration.seconds, 0) : 0
                     currentTime = 0
+                    updateObservationSnapshot(time: 0, rate: 0)
                     installTimeObserver(for: queuePlayer)
                     isLoading = false
                     loadTask = nil
@@ -311,6 +323,7 @@ struct ItemVideoView: View {
         removeTimeObserver(from: player)
         pausePlayback()
         beginPlayerFadeOut()
+        updateObservationSnapshot(time: currentTime, rate: 0)
     }
 
     private func beginPlayerFadeOut() {
@@ -356,6 +369,18 @@ struct ItemVideoView: View {
         duration = 0
     }
 
+    private func interpolatedTime(at date: Date) -> Double {
+        let elapsed = date.timeIntervalSince(lastObservationDate)
+        let projected = lastObservedTime + (lastObservedRate * elapsed)
+        return min(max(projected, sliderRange.lowerBound), sliderRange.upperBound)
+    }
+
+    private func updateObservationSnapshot(time: Double, rate: Double) {
+        lastObservedTime = min(max(time, sliderRange.lowerBound), sliderRange.upperBound)
+        lastObservationDate = Date()
+        lastObservedRate = rate
+    }
+
     private func togglePlayback() {
         wasPlayingBeforeScrub = false
         if isPlaying {
@@ -373,6 +398,7 @@ struct ItemVideoView: View {
 
         player.pause()
         isPlaying = false
+        updateObservationSnapshot(time: currentTime, rate: 0)
     }
 
     private func resumePlayback() {
@@ -384,6 +410,7 @@ struct ItemVideoView: View {
         player.play()
         isPlaying = true
         wasPlayingBeforeBackground = false
+        updateObservationSnapshot(time: currentTime, rate: Double(player.rate == 0 ? 1 : player.rate))
     }
 
     private func needsMaterialization(for url: URL) -> Bool {
@@ -402,9 +429,12 @@ struct ItemVideoView: View {
             wasPlayingBeforeScrub = isPlaying
             pausePlayback()
         } else {
+            let shouldResume = wasPlayingBeforeScrub
             seek(to: currentTime)
-            if wasPlayingBeforeScrub {
+            if shouldResume {
                 resumePlayback()
+            } else {
+                updateObservationSnapshot(time: currentTime, rate: 0)
             }
             wasPlayingBeforeScrub = false
         }
@@ -430,6 +460,7 @@ struct ItemVideoView: View {
 
         let time = CMTime(seconds: seconds, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+        updateObservationSnapshot(time: seconds, rate: Double(player.rate))
     }
 
     private var backgroundColor: Color {
@@ -437,13 +468,15 @@ struct ItemVideoView: View {
     }
 
     private func installTimeObserver(for player: AVQueuePlayer) {
-        let interval = CMTime(seconds: 0.25, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        let interval = CMTime(seconds: 0.1, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
         timeObserverToken = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { time in
             guard !isScrubbing else { return }
 
             let seconds = time.seconds
             if seconds.isFinite {
-                currentTime = min(max(seconds, sliderRange.lowerBound), sliderRange.upperBound)
+                let clamped = min(max(seconds, sliderRange.lowerBound), sliderRange.upperBound)
+                currentTime = clamped
+                updateObservationSnapshot(time: clamped, rate: Double(player.rate))
             }
         }
     }
