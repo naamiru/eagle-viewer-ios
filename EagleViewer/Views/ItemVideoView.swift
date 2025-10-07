@@ -92,11 +92,20 @@ struct ItemVideoView: View {
     private var playbackControls: some View {
         HStack(alignment: .center, spacing: 16) {
             playbackButton
-            seekBar
+                .opacity(isPlaybackControlsVisible ? 1 : 0)
+
+            if isPlaybackControlsVisible {
+                seekBar
+                    .transition(.opacity)
+            } else {
+                Spacer()
+            }
         }
         .padding(.leading, rootSafeAreaInsets.leading + 20)
         .padding(.trailing, rootSafeAreaInsets.trailing + 20)
         .padding(.bottom, rootSafeAreaInsets.bottom + 45)
+        .allowsHitTesting(isPlaybackControlsVisible)
+        .animation(.easeInOut(duration: 0.2), value: isPlaybackControlsVisible)
     }
 
     private var playbackButton: some View {
@@ -198,13 +207,9 @@ struct ItemVideoView: View {
                     }
             }
 
-            Group {
-                if isPlaybackControlsVisible {
-                    playbackControls
-                        .transition(.opacity)
-                }
+            if isSelected {
+                playbackControls
             }
-            .animation(.easeInOut(duration: 0.2), value: isPlaybackControlsVisible)
         }
         .onAppear {
             if isSelected {
