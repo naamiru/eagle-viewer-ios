@@ -116,7 +116,7 @@ struct ItemVideoView: View {
                 .frame(width: 44, height: 44)
         }
         .contentShape(.circle)
-        .glassEffect(.regular.interactive(), in: Circle())
+        .regularGlassEffect(interactive: true)
         .disabled(player == nil && !isPlayerVisible)
     }
 
@@ -529,7 +529,7 @@ private struct PhotosStyleSeekBar: View {
 
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color.black.opacity(0.15))
+                    .fill(.thinMaterial)
 
                 Capsule()
                     .fill(Color.black.opacity(0.05))

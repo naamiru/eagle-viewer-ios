@@ -57,7 +57,7 @@ struct HomeView: View {
                         Text(library.name)
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.caption)
-                            .foregroundColor(.primary)
+                            .legacyAccentForeground()
                     }
                 }
             }

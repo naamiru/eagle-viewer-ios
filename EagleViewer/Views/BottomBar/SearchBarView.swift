@@ -40,7 +40,7 @@ struct SearchBarView: View {
                 .padding(.horizontal)
                 .frame(height: 44)
                 .contentShape(RoundedRectangle(cornerRadius: 22))
-                .glassEffect(.regular)
+                .regularGlassEffect(interactive: false)
 
                 Button(action: {
                     isSearchFieldFocused = false
@@ -53,7 +53,7 @@ struct SearchBarView: View {
                 }
                 .frame(width: 44, height: 44)
                 .contentShape(.circle)
-                .glassEffect(.regular.interactive())
+                .regularGlassEffect(interactive: true)
             }
         }
         .onAppear {
@@ -134,7 +134,7 @@ struct SearchSuggestInnerView: View {
                 VStack(spacing: 0) {
                     let (_, searched) = TagCountsRequest.splitSearchText(searchManager.searchText)
 
-                    ForEach(searchHistories.enumerated(), id: \.element.searchText) { index, searchHistory in
+                    ForEach(Array(searchHistories.enumerated()), id: \.element.searchText) { index, searchHistory in
                         let isFirst = index == 0
                         let isLast = index == maxCount - 1 || (index == searchHistories.count - 1 && tagCounts.isEmpty)
                         HStack {
@@ -165,7 +165,7 @@ struct SearchSuggestInnerView: View {
                         }
                     }
 
-                    ForEach(tagCounts.enumerated(), id: \.element.tag) { index, tagCount in
+                    ForEach(Array(tagCounts.enumerated()), id: \.element.tag) { index, tagCount in
                         let isFirst = index == 0 && searchHistories.isEmpty
                         let isLast = index == tagCounts.count - 1
                         HStack {
@@ -191,7 +191,7 @@ struct SearchSuggestInnerView: View {
                     }
                 }
                 .fixedSize(horizontal: true, vertical: false)
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(in: RoundedRectangle(cornerRadius: 12))
             }
 
             Spacer()
