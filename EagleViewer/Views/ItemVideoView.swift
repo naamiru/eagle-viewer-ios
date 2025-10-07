@@ -33,9 +33,11 @@ struct ItemVideoView: View {
     @State private var isThumbnailLoaded = false
     @State private var isPlaying = false
     @State private var wasPlayingBeforeScrub = false
+    @State private var wasPlayingBeforeBackground = false
 
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
     @Environment(\.rootSafeAreaInsets) private var rootSafeAreaInsets
+    @Environment(\.scenePhase) private var scenePhase
 
     private var videoURL: URL? {
         guard let currentLibraryURL = libraryFolderManager.currentLibraryURL else {
@@ -213,6 +215,9 @@ struct ItemVideoView: View {
         .onDisappear {
             teardownPlayer()
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            handleScenePhaseChange(newPhase)
+        }
     }
 
     private func prepareVideoPlayer(forceReload: Bool = false) {
@@ -308,6 +313,7 @@ struct ItemVideoView: View {
         let shouldAnimate = isPlayerVisible || player != nil
         isScrubbing = false
         isPlaying = false
+        wasPlayingBeforeBackground = false
 
         if shouldAnimate {
             withAnimation(.easeInOut(duration: 0.18)) {
@@ -371,6 +377,7 @@ struct ItemVideoView: View {
 
         player.play()
         isPlaying = true
+        wasPlayingBeforeBackground = false
     }
 
     private func needsMaterialization(for url: URL) -> Bool {
@@ -394,6 +401,21 @@ struct ItemVideoView: View {
                 resumePlayback()
             }
             wasPlayingBeforeScrub = false
+        }
+    }
+
+    private func handleScenePhaseChange(_ phase: ScenePhase) {
+        switch phase {
+        case .background:
+            wasPlayingBeforeBackground = isPlaying
+            pausePlayback()
+        case .active:
+            if isSelected, wasPlayingBeforeBackground {
+                resumePlayback()
+            }
+            wasPlayingBeforeBackground = false
+        default:
+            break
         }
     }
 
