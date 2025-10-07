@@ -5,6 +5,7 @@
 //  Created on 2025/08/24
 //
 
+import AVFoundation
 import AVKit
 import SwiftUI
 
@@ -21,6 +22,10 @@ struct ItemVideoView: View {
     @State private var isLoading = false
     @State private var loadTask: Task<Void, Never>?
     @State private var loadTaskID: UUID?
+    @State private var currentTime: Double = 0
+    @State private var duration: Double = 0
+    @State private var isScrubbing = false
+    @State private var timeObserverToken: Any?
 
     @EnvironmentObject private var imageViewerManager: ImageViewerManager
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
@@ -33,34 +38,78 @@ struct ItemVideoView: View {
         return currentLibraryURL.appending(path: item.imagePath, directoryHint: .notDirectory)
     }
 
+    @ViewBuilder
     private var placeholder: some View {
         ZStack {
             Rectangle()
-                .fill(Color.black)
+                .fill(isNoUI ? Color.black : Color.white)
                 .ignoresSafeArea()
 
             ProgressView()
                 .progressViewStyle(.circular)
-                .tint(.white)
+                .tint(isNoUI ? .white : .gray)
         }
     }
 
+    private var sliderRange: ClosedRange<Double> {
+        0 ... max(duration, 0.001)
+    }
+
+    private var seekBar: some View {
+        Slider(
+            value: Binding(
+                get: { currentTime },
+                set: { newValue in
+                    currentTime = min(max(newValue, sliderRange.lowerBound), sliderRange.upperBound)
+                }
+            ),
+            in: sliderRange,
+            onEditingChanged: handleSliderEditingChanged
+        )
+        .tint(.accentColor)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 28)
+    }
+
     var body: some View {
-        Group {
-            if let player {
-                VideoPlayer(player: player)
-                    .onAppear {
-                        player.play()
+        ZStack {
+            (isNoUI ? Color.black : Color.white)
+                .ignoresSafeArea()
+
+            Group {
+                if let player {
+                    VideoPlayer(player: player)
+                        .allowsHitTesting(false)
+                        .onAppear {
+                            player.play()
+                        }
+                        .onDisappear {
+                            player.pause()
+                        }
+                } else {
+                    placeholder
+                }
+            }
+
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isNoUI.toggle()
                     }
-                    .onDisappear {
-                        player.pause()
-                    }
-            } else {
-                placeholder
+                }
+        }
+        .overlay(alignment: .bottom) {
+            if !isNoUI, duration > 0 {
+                seekBar
             }
         }
         .onAppear {
             prepareVideoPlayer()
+
+            if let player, timeObserverToken == nil {
+                installTimeObserver(for: player)
+            }
         }
         .onChange(of: videoURL) {
             prepareVideoPlayer(forceReload: true)
@@ -70,6 +119,7 @@ struct ItemVideoView: View {
             loadTask = nil
             loadTaskID = nil
             isLoading = false
+            removeTimeObserver(from: player)
             player?.pause()
         }
     }
@@ -79,9 +129,12 @@ struct ItemVideoView: View {
             loadTask?.cancel()
             loadTask = nil
             loadTaskID = nil
+            removeTimeObserver(from: player)
             player?.pause()
             player = nil
             playerLooper = nil
+            currentTime = 0
+            duration = 0
         } else if player != nil || loadTask != nil {
             return
         }
@@ -115,13 +168,18 @@ struct ItemVideoView: View {
                 }
 
                 let asset = AVURLAsset(url: url)
+                let assetDuration = try await asset.load(.duration)
                 let playerItem = AVPlayerItem(asset: asset)
 
                 await MainActor.run {
                     guard loadTaskID == taskID else { return }
+                    removeTimeObserver(from: player)
                     let queuePlayer = AVQueuePlayer(playerItem: playerItem)
                     player = queuePlayer
                     playerLooper = AVPlayerLooper(player: queuePlayer, templateItem: playerItem)
+                    duration = assetDuration.seconds.isFinite ? max(assetDuration.seconds, 0) : 0
+                    currentTime = 0
+                    installTimeObserver(for: queuePlayer)
                     isLoading = false
                     loadTask = nil
                     loadTaskID = nil
@@ -147,5 +205,43 @@ struct ItemVideoView: View {
 
         let (isUbiq, isCurrent) = (try? CloudFile.ubiquitousQuickState(url)) ?? (false, false)
         return isUbiq && !isCurrent
+    }
+
+    private func handleSliderEditingChanged(_ isEditing: Bool) {
+        guard let player else { return }
+
+        isScrubbing = isEditing
+
+        if isEditing {
+            player.pause()
+        } else {
+            seek(to: currentTime)
+            player.play()
+        }
+    }
+
+    private func seek(to seconds: Double) {
+        guard let player else { return }
+
+        let time = CMTime(seconds: seconds, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+    }
+
+    private func installTimeObserver(for player: AVQueuePlayer) {
+        let interval = CMTime(seconds: 0.25, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        timeObserverToken = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { time in
+            guard !isScrubbing else { return }
+
+            let seconds = time.seconds
+            if seconds.isFinite {
+                currentTime = min(max(seconds, sliderRange.lowerBound), sliderRange.upperBound)
+            }
+        }
+    }
+
+    private func removeTimeObserver(from player: AVQueuePlayer?) {
+        guard let player, let token = timeObserverToken else { return }
+        player.removeTimeObserver(token)
+        timeObserverToken = nil
     }
 }
