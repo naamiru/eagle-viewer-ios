@@ -6,6 +6,7 @@
 //
 
 import AVFoundation
+import NukeUI
 import SwiftUI
 import UIKit
 
@@ -15,6 +16,7 @@ struct ItemVideoView: View {
     }
 
     let item: Item
+    let isSelected: Bool
     @Binding var isNoUI: Bool
 
     @State private var player: AVQueuePlayer?
@@ -26,8 +28,10 @@ struct ItemVideoView: View {
     @State private var duration: Double = 0
     @State private var isScrubbing = false
     @State private var timeObserverToken: Any?
+    @State private var isPlayerVisible = false
+    @State private var playerCleanupTask: Task<Void, Never>?
+    @State private var isThumbnailLoaded = false
 
-    @EnvironmentObject private var imageViewerManager: ImageViewerManager
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
     @Environment(\.rootSafeAreaInsets) private var rootSafeAreaInsets
 
@@ -39,17 +43,12 @@ struct ItemVideoView: View {
         return currentLibraryURL.appending(path: item.imagePath, directoryHint: .notDirectory)
     }
 
-    @ViewBuilder
-    private var placeholder: some View {
-        ZStack {
-            Rectangle()
-                .fill(isNoUI ? Color.black : Color.white)
-                .ignoresSafeArea()
-
-            ProgressView()
-                .progressViewStyle(.circular)
-                .tint(isNoUI ? .white : .gray)
+    private var thumbnailURL: URL? {
+        guard let currentLibraryURL = libraryFolderManager.currentLibraryURL else {
+            return nil
         }
+
+        return currentLibraryURL.appending(path: item.thumbnailPath, directoryHint: .notDirectory)
     }
 
     private var sliderRange: ClosedRange<Double> {
@@ -75,70 +74,135 @@ struct ItemVideoView: View {
         .padding(.bottom, rootSafeAreaInsets.bottom + 40)
     }
 
+    private var seekBarOpacity: Double {
+        (isSelected && !isNoUI && duration > 0) ? 1 : 0
+    }
+
+    @ViewBuilder
+    private var thumbnailContent: some View {
+        if let thumbnailURL {
+            LazyImage(url: thumbnailURL) { state in
+                Group {
+                    if let image = state.image {
+                        image
+                            .resizable()
+                            .scaledToFit()
+                    } else {
+                        fallbackBackground
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onAppear {
+                    isThumbnailLoaded = state.image != nil
+                }
+                .onChange(of: state.image != nil) { _, newValue in
+                    isThumbnailLoaded = newValue
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea()
+        } else {
+            fallbackBackground
+                .ignoresSafeArea()
+                .onAppear {
+                    isThumbnailLoaded = false
+                }
+        }
+    }
+
+    private var fallbackBackground: Color {
+        isNoUI ? .black : .white
+    }
+
+    @ViewBuilder
+    private var activeVideoContent: some View {
+        ZStack {
+            if let player {
+                PlayerLayerView(player: player, isDarkBackground: isNoUI)
+                    .allowsHitTesting(false)
+                    .onAppear {
+                        player.play()
+                    }
+                    .onDisappear {
+                        player.pause()
+                    }
+            }
+
+            thumbnailContent
+                .overlay {
+                    if isLoading {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(.white)
+                            .scaleEffect(1.1)
+                    }
+                }
+                .opacity(isPlayerVisible ? 0 : 1)
+                .animation(isThumbnailLoaded ? .easeInOut(duration: 0.2) : nil, value: isPlayerVisible)
+        }
+    }
+
     var body: some View {
         ZStack {
             (isNoUI ? Color.black : Color.white)
                 .ignoresSafeArea()
 
-            Group {
-                if let player {
-                    PlayerLayerView(player: player, isDarkBackground: isNoUI)
-                        .allowsHitTesting(false)
-                        .onAppear {
-                            player.play()
-                        }
-                        .onDisappear {
-                            player.pause()
-                        }
-                } else {
-                    placeholder
-                }
-            }
+            activeVideoContent
 
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isNoUI.toggle()
+            if isSelected {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isNoUI.toggle()
+                        }
                     }
-                }
+            }
         }
         .overlay(alignment: .bottom) {
-            if !isNoUI, duration > 0 {
-                seekBar
-            }
+            seekBar
+                .opacity(seekBarOpacity)
+                .animation(.easeInOut(duration: 0.2), value: seekBarOpacity)
         }
         .onAppear {
-            prepareVideoPlayer()
-
-            if let player, timeObserverToken == nil {
-                installTimeObserver(for: player)
+            if isSelected {
+                prepareVideoPlayer()
+            } else {
+                teardownPlayer()
             }
         }
-        .onChange(of: videoURL) {
-            prepareVideoPlayer(forceReload: true)
+        .onChange(of: videoURL) { _, _ in
+            if isSelected {
+                prepareVideoPlayer(forceReload: true)
+            } else {
+                teardownPlayer()
+            }
+        }
+        .onChange(of: thumbnailURL) { _, _ in
+            isThumbnailLoaded = false
+        }
+        .onChange(of: isSelected) { _, newValue in
+            if newValue {
+                prepareVideoPlayer(forceReload: true)
+            } else {
+                teardownPlayer()
+            }
         }
         .onDisappear {
-            loadTask?.cancel()
-            loadTask = nil
-            loadTaskID = nil
-            isLoading = false
-            removeTimeObserver(from: player)
-            player?.pause()
+            teardownPlayer()
         }
     }
 
     private func prepareVideoPlayer(forceReload: Bool = false) {
+        guard isSelected else { return }
+
         if forceReload {
             loadTask?.cancel()
             loadTask = nil
             loadTaskID = nil
             removeTimeObserver(from: player)
             player?.pause()
-            player = nil
-            playerLooper = nil
-            currentTime = 0
-            duration = 0
+            beginPlayerFadeOut()
         } else if player != nil || loadTask != nil {
             return
         }
@@ -177,6 +241,7 @@ struct ItemVideoView: View {
 
                 await MainActor.run {
                     guard loadTaskID == taskID else { return }
+                    cancelPendingPlayerCleanup()
                     removeTimeObserver(from: player)
                     let queuePlayer = AVQueuePlayer(playerItem: playerItem)
                     player = queuePlayer
@@ -187,6 +252,9 @@ struct ItemVideoView: View {
                     isLoading = false
                     loadTask = nil
                     loadTaskID = nil
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isPlayerVisible = true
+                    }
                 }
             } catch {
                 await MainActor.run {
@@ -200,6 +268,57 @@ struct ItemVideoView: View {
         }
 
         loadTask = task
+    }
+
+    private func teardownPlayer() {
+        loadTask?.cancel()
+        loadTask = nil
+        loadTaskID = nil
+        isLoading = false
+        removeTimeObserver(from: player)
+        player?.pause()
+        beginPlayerFadeOut()
+    }
+
+    private func beginPlayerFadeOut() {
+        cancelPendingPlayerCleanup()
+        let shouldAnimate = isPlayerVisible || player != nil
+        isScrubbing = false
+
+        if shouldAnimate {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                isPlayerVisible = false
+            }
+            schedulePlayerCleanup()
+        } else {
+            isPlayerVisible = false
+            completePlayerCleanup()
+        }
+    }
+
+    private func schedulePlayerCleanup() {
+        cancelPendingPlayerCleanup()
+
+        playerCleanupTask = Task {
+            try? await Task.sleep(nanoseconds: 220_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                completePlayerCleanup()
+            }
+        }
+    }
+
+    private func cancelPendingPlayerCleanup() {
+        playerCleanupTask?.cancel()
+        playerCleanupTask = nil
+    }
+
+    private func completePlayerCleanup() {
+        playerCleanupTask = nil
+        playerLooper = nil
+        player = nil
+        currentTime = 0
+        duration = 0
     }
 
     private func needsMaterialization(for url: URL) -> Bool {

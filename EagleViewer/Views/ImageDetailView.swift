@@ -141,16 +141,22 @@ struct ImageDetailView: View {
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 0) {
                         ForEach(items, id: \.itemId) { item in
+                            let isItemSelected = (mainScrollId ?? selectedItem.itemId) == item.itemId
+
                             Group {
                                 if ItemVideoView.isVideo(item: item) {
-                                    ItemVideoView(item: item, isNoUI: $isNoUI)
+                                    ItemVideoView(
+                                        item: item,
+                                        isSelected: isItemSelected,
+                                        isNoUI: $isNoUI
+                                    )
                                 } else {
                                     ItemImageView(
                                         item: item,
-                                        isSelected: item.itemId == mainScrollId
+                                        isSelected: isItemSelected
                                     )
                                     .zoomable(
-                                        isSelected: item.itemId == mainScrollId,
+                                        isSelected: isItemSelected,
                                         isNoUI: $isNoUI,
                                         onScaleChanged: onScaleChanged
                                     )
