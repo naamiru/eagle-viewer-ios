@@ -57,16 +57,17 @@ class ItemQuery {
             // Escape special characters for SQL LIKE
             let escapedKeyword = escapeLike(keyword)
 
-            // Search across name, annotation, and tags
+            // Search across name, annotation, extension, and tags
             let nameCondition = "name LIKE ? ESCAPE '\\'"
             let annotationCondition = "annotation LIKE ? ESCAPE '\\'"
+            let extCondition = "ext LIKE ? ESCAPE '\\'"
             let tagsCondition = "EXISTS (SELECT 1 FROM json_each(tags) WHERE value LIKE ? ESCAPE '\\')"
 
             let likePattern = "%\(escapedKeyword)%"
 
             filters.append((
-                sql: "(\(nameCondition) OR \(annotationCondition) OR \(tagsCondition))",
-                arguments: StatementArguments([likePattern, likePattern, likePattern])
+                sql: "(\(nameCondition) OR \(annotationCondition) OR \(extCondition) OR \(tagsCondition))",
+                arguments: StatementArguments([likePattern, likePattern, likePattern, likePattern])
             ))
         }
 

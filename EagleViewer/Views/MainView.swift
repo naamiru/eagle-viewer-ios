@@ -46,18 +46,11 @@ struct MainView: View {
                let dismiss = imageViewerManager.dismiss
             {
                 Group {
-                    if ItemVideoView.isVideo(item: item) {
-                        ItemVideoView(
-                            item: item,
-                            dismiss: { dismiss(item) }
-                        )
-                    } else {
-                        ImageDetailView(
-                            item: item,
-                            items: items.filter { !ItemVideoView.isVideo(item: $0) },
-                            dismiss: dismiss
-                        )
-                    }
+                    ImageDetailView(
+                        item: item,
+                        items: items,
+                        dismiss: dismiss
+                    )
                 }
                 .transition(.opacity)
                 .ignoresSafeArea(.keyboard)

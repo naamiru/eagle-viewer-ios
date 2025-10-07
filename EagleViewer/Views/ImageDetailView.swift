@@ -50,14 +50,14 @@ struct ImageDetailView: View {
         
         if currentIndex > 0 {
             let prevItem = items[currentIndex - 1]
-            if let prevURL = getImageURL(for: prevItem) {
+            if !ItemVideoView.isVideo(item: prevItem), let prevURL = getImageURL(for: prevItem) {
                 urlsToPrefetch.append(prevURL)
             }
         }
         
         if currentIndex < items.count - 1 {
             let nextItem = items[currentIndex + 1]
-            if let nextURL = getImageURL(for: nextItem) {
+            if !ItemVideoView.isVideo(item: nextItem), let nextURL = getImageURL(for: nextItem) {
                 urlsToPrefetch.append(nextURL)
             }
         }
@@ -141,17 +141,29 @@ struct ImageDetailView: View {
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 0) {
                         ForEach(items, id: \.itemId) { item in
-                            ItemImageView(
-                                item: item,
-                                isSelected: item.itemId == mainScrollId
-                            )
-                                .zoomable(
-                                    isSelected: item.itemId == mainScrollId,
-                                    isNoUI: $isNoUI,
-                                    onScaleChanged: onScaleChanged
-                                )
-                                .containerRelativeFrame(.horizontal)
-                                .id(item.itemId)
+                            let isItemSelected = (mainScrollId ?? selectedItem.itemId) == item.itemId
+
+                            Group {
+                                if ItemVideoView.isVideo(item: item) {
+                                    ItemVideoView(
+                                        item: item,
+                                        isSelected: isItemSelected,
+                                        isNoUI: $isNoUI
+                                    )
+                                } else {
+                                    ItemImageView(
+                                        item: item,
+                                        isSelected: isItemSelected
+                                    )
+                                    .zoomable(
+                                        isSelected: isItemSelected,
+                                        isNoUI: $isNoUI,
+                                        onScaleChanged: onScaleChanged
+                                    )
+                                }
+                            }
+                            .containerRelativeFrame(.horizontal)
+                            .id(item.itemId)
                         }
                     }
                     .scrollTargetLayout()
