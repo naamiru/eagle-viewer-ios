@@ -86,12 +86,12 @@ struct ItemVideoView: View {
         }
         .padding(.leading, rootSafeAreaInsets.leading + 20)
         .padding(.trailing, rootSafeAreaInsets.trailing + 20)
-        .padding(.bottom, rootSafeAreaInsets.bottom + 40)
+        .padding(.bottom, rootSafeAreaInsets.bottom + 45)
     }
 
     private var playbackButton: some View {
         Button(action: togglePlayback) {
-            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+            Image(systemName: isButtonShowingPauseIcon ? "pause.fill" : "play.fill")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(Color.accentColor)
                 .frame(width: 44, height: 44)
@@ -99,6 +99,10 @@ struct ItemVideoView: View {
         .contentShape(.circle)
         .glassEffect(.regular.interactive(), in: Circle())
         .disabled(player == nil && !isPlayerVisible)
+    }
+
+    private var isButtonShowingPauseIcon: Bool {
+        isPlaying || (isScrubbing && wasPlayingBeforeScrub)
     }
 
     @ViewBuilder
@@ -352,6 +356,7 @@ struct ItemVideoView: View {
     }
 
     private func togglePlayback() {
+        wasPlayingBeforeScrub = false
         if isPlaying {
             pausePlayback()
         } else {
