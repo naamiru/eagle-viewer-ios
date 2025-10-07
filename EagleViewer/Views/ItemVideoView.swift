@@ -366,6 +366,7 @@ struct ItemVideoView: View {
         player = nil
         currentTime = 0
         duration = 0
+        updateObservationSnapshot(time: 0, rate: 0)
     }
 
     private func interpolatedTime(at date: Date) -> Double {
