@@ -85,18 +85,27 @@ struct ItemVideoView: View {
         }
     }
 
-    private var seekBarOpacity: Double {
-        (isSelected && !isNoUI && duration > 0) ? 1 : 0
+    private var isPlaybackControlsVisible: Bool {
+        isSelected && !isNoUI && duration > 0
     }
 
     private var playbackControls: some View {
         HStack(alignment: .center, spacing: 16) {
             playbackButton
-            seekBar
+                .opacity(isPlaybackControlsVisible ? 1 : 0)
+
+            if isPlaybackControlsVisible {
+                seekBar
+                    .transition(.opacity)
+            } else {
+                Spacer()
+            }
         }
         .padding(.leading, rootSafeAreaInsets.leading + 20)
         .padding(.trailing, rootSafeAreaInsets.trailing + 20)
         .padding(.bottom, rootSafeAreaInsets.bottom + 45)
+        .allowsHitTesting(isPlaybackControlsVisible)
+        .animation(.easeInOut(duration: 0.2), value: isPlaybackControlsVisible)
     }
 
     private var playbackButton: some View {
@@ -180,7 +189,7 @@ struct ItemVideoView: View {
     }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottom) {
             backgroundColor
                 .ignoresSafeArea()
                 .animation(.easeInOut(duration: 0.25), value: isNoUI)
@@ -189,6 +198,7 @@ struct ItemVideoView: View {
 
             if isSelected {
                 Color.clear
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         withAnimation(.easeInOut(duration: 0.2)) {
@@ -196,12 +206,10 @@ struct ItemVideoView: View {
                         }
                     }
             }
-        }
-        .overlay(alignment: .bottom) {
-            playbackControls
-                .opacity(seekBarOpacity)
-                .animation(.easeInOut(duration: 0.2), value: seekBarOpacity)
-                .allowsHitTesting(seekBarOpacity > 0)
+
+            if isSelected {
+                playbackControls
+            }
         }
         .onAppear {
             if isSelected {
