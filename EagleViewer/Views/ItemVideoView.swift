@@ -157,7 +157,7 @@ struct ItemVideoView: View {
     }
 
     private var fallbackBackground: Color {
-        isNoUI ? .black : .white
+        isNoUI ? .black : Color(.systemBackground)
     }
 
     @ViewBuilder
@@ -472,7 +472,7 @@ struct ItemVideoView: View {
     }
 
     private var backgroundColor: Color {
-        isNoUI ? .black : .white
+        isNoUI ? .black : Color(.systemBackground)
     }
 
     private func installTimeObserver(for player: AVQueuePlayer) {
@@ -640,7 +640,7 @@ private final class PlayerLayerContainerView: UIView {
     private var currentBackgroundColor: UIColor?
 
     func applyBackgroundColor(isDarkBackground: Bool, animated: Bool) {
-        let color: UIColor = isDarkBackground ? .black : .white
+        let color: UIColor = isDarkBackground ? .black : .systemBackground
 
         guard color != currentBackgroundColor else { return }
         currentBackgroundColor = color
