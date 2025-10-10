@@ -135,7 +135,7 @@ struct ImageDetailView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                (isNoUI ? Color.black : Color.white)
+                (isNoUI ? Color.black : Color(.systemBackground))
                     .ignoresSafeArea()
                 
                 ScrollView(.horizontal) {
