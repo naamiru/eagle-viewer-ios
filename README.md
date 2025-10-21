@@ -4,6 +4,9 @@ An iOS app for viewing [Eagle](https://jp.eagle.cool/) image libraries on iPhone
 
 [<img src="docs/assets/appstore.png" alt="App Store" height="75">](https://apps.apple.com/us/app/eagle-viewer/id6751750244?uo=4)
 
+> [!NOTE]
+> For non-Apple devices, check out **[Eagle WebUI](https://github.com/naamiru/eagle-webui)** — a browser-based viewer.
+
 ## Screenshots
 
 <table>
