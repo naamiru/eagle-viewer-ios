@@ -397,6 +397,15 @@ struct MetadataImporter {
         metadata: ItemMetadataJSON
     ) -> StoredItem {
         let name = metadata.name ?? ""
+        let ext = metadata.ext ?? ""
+        let noThumbnail: Bool
+        if let metadataNoThumbnail = metadata.noThumbnail {
+            noThumbnail = metadataNoThumbnail
+        } else if ItemFileType.isText(ext: ext) {
+            noThumbnail = true
+        } else {
+            noThumbnail = false
+        }
         return StoredItem(
             libraryId: libraryId,
             itemId: itemId,
@@ -405,13 +414,13 @@ struct MetadataImporter {
             size: metadata.size ?? 0,
             btime: metadata.btime ?? 0,
             mtime: metadata.mtime ?? 0,
-            ext: metadata.ext ?? "",
+            ext: ext,
             isDeleted: metadata.isDeleted ?? false,
             modificationTime: metadata.modificationTime ?? 0,
             height: metadata.height ?? 0,
             width: metadata.width ?? 0,
             lastModified: metadata.lastModified ?? 0,
-            noThumbnail: metadata.noThumbnail ?? false,
+            noThumbnail: noThumbnail,
             star: metadata.star ?? 0,
             duration: metadata.duration ?? 0,
             tags: metadata.tags ?? [],

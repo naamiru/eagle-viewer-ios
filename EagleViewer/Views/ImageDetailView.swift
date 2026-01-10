@@ -50,14 +50,20 @@ struct ImageDetailView: View {
         
         if currentIndex > 0 {
             let prevItem = items[currentIndex - 1]
-            if !ItemVideoView.isVideo(item: prevItem), let prevURL = getImageURL(for: prevItem) {
+            if !ItemVideoView.isVideo(item: prevItem),
+               !prevItem.isTextFile,
+               let prevURL = getImageURL(for: prevItem)
+            {
                 urlsToPrefetch.append(prevURL)
             }
         }
         
         if currentIndex < items.count - 1 {
             let nextItem = items[currentIndex + 1]
-            if !ItemVideoView.isVideo(item: nextItem), let nextURL = getImageURL(for: nextItem) {
+            if !ItemVideoView.isVideo(item: nextItem),
+               !nextItem.isTextFile,
+               let nextURL = getImageURL(for: nextItem)
+            {
                 urlsToPrefetch.append(nextURL)
             }
         }
@@ -150,6 +156,8 @@ struct ImageDetailView: View {
                                         isSelected: isItemSelected,
                                         isNoUI: $isNoUI
                                     )
+                                } else if item.isTextFile {
+                                    ItemTextView(item: item)
                                 } else {
                                     ItemImageView(
                                         item: item,
@@ -292,5 +300,93 @@ struct ImageDetailView: View {
                 thumbnailScrollId = selectedItem.itemId
             }
         }
+    }
+}
+
+struct ItemTextView: View {
+    let item: Item
+
+    @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
+    @State private var textContent: String?
+    @State private var errorMessage: String?
+    @State private var isLoading = false
+
+    private var fileURL: URL? {
+        guard let currentLibraryURL = libraryFolderManager.currentLibraryURL else {
+            return nil
+        }
+
+        return currentLibraryURL.appending(path: item.imagePath, directoryHint: .notDirectory)
+    }
+
+    var body: some View {
+        Group {
+            if let textContent {
+                ScrollView {
+                    Text(verbatim: textContent)
+                        .font(.system(.body, design: .monospaced))
+                        .foregroundColor(.primary)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(20)
+                }
+            } else if isLoading {
+                ProgressView()
+            } else {
+                VStack(spacing: 12) {
+                    Image(systemName: "doc.plaintext")
+                        .font(.system(size: 40, weight: .regular))
+                        .foregroundColor(.secondary)
+                    Text(errorMessage ?? "Unable to load text file.")
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.secondarySystemBackground))
+        .task(id: item.itemId) {
+            await loadText()
+        }
+    }
+
+    @MainActor
+    private func loadText() async {
+        isLoading = true
+        textContent = nil
+        errorMessage = nil
+
+        guard let fileURL else {
+            isLoading = false
+            errorMessage = "File not available."
+            return
+        }
+
+        do {
+            let data = try await CloudFile.fileData(at: fileURL)
+            if let decoded = decodeText(from: data) {
+                textContent = decoded
+            } else {
+                errorMessage = "Unable to decode text file."
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+
+        isLoading = false
+    }
+
+    private func decodeText(from data: Data) -> String? {
+        if let string = String(data: data, encoding: .utf8) {
+            return string
+        }
+        if let string = String(data: data, encoding: .utf16) {
+            return string
+        }
+        if let string = String(data: data, encoding: .isoLatin1) {
+            return string
+        }
+        return nil
     }
 }

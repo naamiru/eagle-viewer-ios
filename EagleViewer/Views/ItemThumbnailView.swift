@@ -65,6 +65,27 @@ struct ThumbnailLoading: View {
     }
 }
 
+struct TextThumbnailView: View {
+    @Binding private var isPlaceholder: Bool
+
+    init(isPlaceholder: Binding<Bool> = .constant(false)) {
+        _isPlaceholder = isPlaceholder
+    }
+
+    var body: some View {
+        ZStack {
+            Color(.systemGray6)
+
+            Image(systemName: "doc.plaintext")
+                .foregroundColor(.gray.opacity(0.7))
+                .font(.system(size: 28, weight: .regular))
+        }
+        .onAppear {
+            isPlaceholder = true
+        }
+    }
+}
+
 struct ItemThumbnailView: View {
     let item: Item
     @Binding private var isPlaceholder: Bool
@@ -85,7 +106,9 @@ struct ItemThumbnailView: View {
     }
     
     var body: some View {
-        if let imageURL {
+        if item.isTextFile {
+            TextThumbnailView(isPlaceholder: $isPlaceholder)
+        } else if let imageURL {
             ThumbnailView(url: imageURL, isPlaceholder: $isPlaceholder)
         } else {
             ThumbnailError()
