@@ -210,7 +210,7 @@ struct ImageDetailView: View {
                                     let isBeforeSelected = selectedIndex != nil && !isThumbnailScrolling && index < selectedIndex!
                                     let isAfterSelected = selectedIndex != nil && !isThumbnailScrolling && index > selectedIndex!
                                     
-                                    ItemThumbnailView(item: item)
+                                    ItemThumbnailView(item: item, textThumbnailStyle: .detailSlider)
                                         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                                         .aspectRatio(isSelected ? 1.0 : 0.7, contentMode: .fill)
                                         .clipShape(RoundedRectangle(cornerRadius: 3))

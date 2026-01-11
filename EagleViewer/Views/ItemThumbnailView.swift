@@ -65,20 +65,38 @@ struct ThumbnailLoading: View {
     }
 }
 
+enum TextThumbnailStyle {
+    case standard
+    case detailSlider
+}
+
 struct TextThumbnailView: View {
+    let style: TextThumbnailStyle
     @Binding private var isPlaceholder: Bool
 
-    init(isPlaceholder: Binding<Bool> = .constant(false)) {
+    init(style: TextThumbnailStyle = .standard, isPlaceholder: Binding<Bool> = .constant(false)) {
+        self.style = style
         _isPlaceholder = isPlaceholder
     }
 
     var body: some View {
         ZStack {
-            Color(.systemGray6)
+            switch style {
+            case .standard:
+                Color(.systemGray6)
 
-            Image(systemName: "doc.plaintext")
-                .foregroundColor(.gray.opacity(0.7))
-                .font(.system(size: 28, weight: .regular))
+                Image(systemName: "doc.plaintext")
+                    .foregroundColor(.gray.opacity(0.7))
+                    .font(.system(size: 28, weight: .regular))
+            case .detailSlider:
+                Color.clear
+
+                Image(systemName: "doc.plaintext")
+                    .foregroundColor(.secondary.opacity(0.8))
+                    .font(.system(size: 20, weight: .regular))
+                    .padding(6)
+                    .background(Color.white)
+            }
         }
         .onAppear {
             isPlaceholder = true
@@ -88,12 +106,18 @@ struct TextThumbnailView: View {
 
 struct ItemThumbnailView: View {
     let item: Item
+    let textThumbnailStyle: TextThumbnailStyle
     @Binding private var isPlaceholder: Bool
     
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
     
-    init(item: Item, isPlaceholder: Binding<Bool> = .constant(false)) {
+    init(
+        item: Item,
+        textThumbnailStyle: TextThumbnailStyle = .standard,
+        isPlaceholder: Binding<Bool> = .constant(false)
+    ) {
         self.item = item
+        self.textThumbnailStyle = textThumbnailStyle
         _isPlaceholder = isPlaceholder
     }
     
@@ -107,7 +131,7 @@ struct ItemThumbnailView: View {
     
     var body: some View {
         if item.isTextFile {
-            TextThumbnailView(isPlaceholder: $isPlaceholder)
+            TextThumbnailView(style: textThumbnailStyle, isPlaceholder: $isPlaceholder)
         } else if let imageURL {
             ThumbnailView(url: imageURL, isPlaceholder: $isPlaceholder)
         } else {
