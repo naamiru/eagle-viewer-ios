@@ -11,6 +11,7 @@
 		23408CBD2E5930B600617E88 /* GRDBQuery in Frameworks */ = {isa = PBXBuildFile; productRef = 23408CBC2E5930B600617E88 /* GRDBQuery */; };
 		235520622F13922200F934D2 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 235520612F13922200F934D2 /* MarkdownUI */; };
 		2355206B2F13EA8100F934D2 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 2355206A2F13EA8100F934D2 /* MarkdownUI */; };
+		2355206E2F13F55500F934D2 /* Textual in Frameworks */ = {isa = PBXBuildFile; productRef = 2355206D2F13F55500F934D2 /* Textual */; };
 		237FA0F12E6119D500CECD8F /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 237FA0F02E6119D500CECD8F /* Localizable.xcstrings */; };
 		23E75EDD2E84979C0002179A /* SDWebImage in Frameworks */ = {isa = PBXBuildFile; productRef = 23E75EDC2E84979C0002179A /* SDWebImage */; };
 		23E75EE22E84A7BC0002179A /* SDWebImageWebPCoder in Frameworks */ = {isa = PBXBuildFile; productRef = 23E75EE12E84A7BC0002179A /* SDWebImageWebPCoder */; };
@@ -56,6 +57,7 @@
 				23E75EDD2E84979C0002179A /* SDWebImage in Frameworks */,
 				23F7D9812E5B7A4300B51BD0 /* Nuke in Frameworks */,
 				2355206B2F13EA8100F934D2 /* MarkdownUI in Frameworks */,
+				2355206E2F13F55500F934D2 /* Textual in Frameworks */,
 				235520622F13922200F934D2 /* MarkdownUI in Frameworks */,
 				23408CBD2E5930B600617E88 /* GRDBQuery in Frameworks */,
 				23F7D9852E5B7A4300B51BD0 /* NukeVideo in Frameworks */,
@@ -114,6 +116,7 @@
 				23E75EE12E84A7BC0002179A /* SDWebImageWebPCoder */,
 				235520612F13922200F934D2 /* MarkdownUI */,
 				2355206A2F13EA8100F934D2 /* MarkdownUI */,
+				2355206D2F13F55500F934D2 /* Textual */,
 			);
 			productName = EagleViewer;
 			productReference = 23408CAA2E592EBD00617E88 /* EagleViewer.app */;
@@ -151,6 +154,7 @@
 				23E75EDB2E84979C0002179A /* XCRemoteSwiftPackageReference "SDWebImage" */,
 				23E75EE02E84A7BC0002179A /* XCRemoteSwiftPackageReference "SDWebImageWebPCoder" */,
 				235520692F13EA8100F934D2 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+				2355206C2F13F55500F934D2 /* XCRemoteSwiftPackageReference "textual" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 23408CAB2E592EBD00617E88 /* Products */;
@@ -432,6 +436,14 @@
 				minimumVersion = 2.4.1;
 			};
 		};
+		2355206C2F13F55500F934D2 /* XCRemoteSwiftPackageReference "textual" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/textual";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.2.0;
+			};
+		};
 		23E75EDB2E84979C0002179A /* XCRemoteSwiftPackageReference "SDWebImage" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/SDWebImage/SDWebImage.git";
@@ -477,6 +489,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 235520692F13EA8100F934D2 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
 			productName = MarkdownUI;
+		};
+		2355206D2F13F55500F934D2 /* Textual */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2355206C2F13F55500F934D2 /* XCRemoteSwiftPackageReference "textual" */;
+			productName = Textual;
 		};
 		23E75EDC2E84979C0002179A /* SDWebImage */ = {
 			isa = XCSwiftPackageProductDependency;

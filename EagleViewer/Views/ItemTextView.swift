@@ -5,8 +5,8 @@
 //  Created on 2025/08/24
 //
 
-import MarkdownUI
 import SwiftUI
+import Textual
 import UIKit
 
 struct ItemTextView: View {
@@ -36,8 +36,6 @@ struct ItemTextView: View {
                     if isMarkdownReady {
                         MarkdownScrollContentView(
                             markdown: textContent,
-                            baseURL: fileURL?.deletingLastPathComponent(),
-                            imageBaseURL: fileURL?.deletingLastPathComponent(),
                             isSelected: isSelected,
                             isNoUI: $isNoUI,
                             topPadding: rootSafeAreaInsets.top + 70,
@@ -139,8 +137,6 @@ struct ItemTextView: View {
 
 private struct MarkdownScrollContentView: View {
     let markdown: String
-    let baseURL: URL?
-    let imageBaseURL: URL?
     let isSelected: Bool
     @Binding var isNoUI: Bool
     let topPadding: CGFloat
@@ -153,8 +149,8 @@ private struct MarkdownScrollContentView: View {
 
     var body: some View {
         ScrollView(.vertical) {
-            Markdown(markdown, baseURL: baseURL, imageBaseURL: imageBaseURL)
-                .textSelection(.enabled)
+            StructuredText(markdown: markdown)
+                .textual.textSelection(.enabled)
                 .environment(
                     \.openURL,
                     OpenURLAction { _ in
