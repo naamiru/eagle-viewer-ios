@@ -90,6 +90,14 @@ struct ImageDetailView: View {
     private func onScaleChanged(_ scale: CGFloat) {
         self.scale = scale
     }
+
+    private var backgroundColor: Color {
+        if selectedItem.isTextFile {
+            return Color(.systemBackground)
+        }
+
+        return isNoUI ? .black : Color(.systemBackground)
+    }
     
     var body: some View {
         GeometryReader { geometry in
@@ -113,7 +121,7 @@ struct ImageDetailView: View {
             .regularGlassEffect(interactive: true)
 
             ZStack {
-                (isNoUI ? Color.black : Color(.systemBackground))
+                backgroundColor
                     .ignoresSafeArea()
                 
                 ScrollView(.horizontal) {
@@ -131,7 +139,8 @@ struct ImageDetailView: View {
                                 } else if item.isTextFile {
                                     ItemTextView(
                                         item: item,
-                                        isSelected: isItemSelected
+                                        isSelected: isItemSelected,
+                                        isNoUI: $isNoUI
                                     )
                                 } else {
                                     ItemImageView(
