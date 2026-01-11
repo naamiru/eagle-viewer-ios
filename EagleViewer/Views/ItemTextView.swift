@@ -29,15 +29,18 @@ struct ItemTextView: View {
     }
 
     var body: some View {
+        let topPaddingOffset: CGFloat = rootSafeAreaInsets.top > 30 ? 60 : 80
+
         Group {
             if let textContent {
                 if item.isMarkdownFile {
                     if isMarkdownReady {
                         MarkdownScrollContentView(
                             markdown: textContent,
-                            topPadding: rootSafeAreaInsets.top + 70,
-                            horizontalPadding: 20,
-                            bottomPadding: rootSafeAreaInsets.bottom + 24
+                            topPadding: rootSafeAreaInsets.top + topPaddingOffset,
+                            leadingPadding: rootSafeAreaInsets.leading + 20,
+                            trailingPadding: rootSafeAreaInsets.trailing + 20,
+                            bottomPadding: rootSafeAreaInsets.bottom + 40
                         )
                     } else {
                         ProgressView()
@@ -45,9 +48,10 @@ struct ItemTextView: View {
                 } else {
                     SelectableTextView(
                         text: textContent,
-                        topPadding: rootSafeAreaInsets.top + 70,
-                        horizontalPadding: 20,
-                        bottomPadding: rootSafeAreaInsets.bottom + 24
+                        topPadding: rootSafeAreaInsets.top + topPaddingOffset,
+                        leadingPadding: rootSafeAreaInsets.leading + 20,
+                        trailingPadding: rootSafeAreaInsets.trailing + 20,
+                        bottomPadding: rootSafeAreaInsets.bottom + 40
                     )
                 }
             } else if isLoading {
@@ -130,7 +134,8 @@ struct ItemTextView: View {
 private struct MarkdownScrollContentView: View {
     let markdown: String
     let topPadding: CGFloat
-    let horizontalPadding: CGFloat
+    let leadingPadding: CGFloat
+    let trailingPadding: CGFloat
     let bottomPadding: CGFloat
 
     var body: some View {
@@ -139,7 +144,8 @@ private struct MarkdownScrollContentView: View {
                 .textual.textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, topPadding)
-                .padding(.horizontal, horizontalPadding)
+                .padding(.leading, leadingPadding)
+                .padding(.trailing, trailingPadding)
                 .padding(.bottom, bottomPadding)
         }
         .scrollIndicators(.visible)
@@ -149,14 +155,20 @@ private struct MarkdownScrollContentView: View {
 private struct SelectableTextView: View {
     let text: String
     let topPadding: CGFloat
-    let horizontalPadding: CGFloat
+    let leadingPadding: CGFloat
+    let trailingPadding: CGFloat
     let bottomPadding: CGFloat
 
     var body: some View {
-        TextViewRepresentable(text: text)
-            .padding(.top, topPadding)
-            .padding(.horizontal, horizontalPadding)
-            .padding(.bottom, bottomPadding)
+        ScrollView(.vertical) {
+            TextViewRepresentable(text: text)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, topPadding)
+                .padding(.leading, leadingPadding)
+                .padding(.trailing, trailingPadding)
+                .padding(.bottom, bottomPadding)
+        }
+        .scrollIndicators(.visible)
     }
 }
 
@@ -167,14 +179,15 @@ private struct TextViewRepresentable: UIViewRepresentable {
         let view = UITextView()
         view.isEditable = false
         view.isSelectable = true
-        view.isScrollEnabled = true
-        view.showsVerticalScrollIndicator = true
-        view.backgroundColor = .white
+        view.isScrollEnabled = false
+        view.backgroundColor = .clear
         view.textColor = UIColor.label
         view.font = UIFont.preferredFont(forTextStyle: .body)
         view.adjustsFontForContentSizeCategory = true
         view.textContainer.lineFragmentPadding = 0
         view.textContainerInset = .zero
+        view.textContainer.lineBreakMode = .byWordWrapping
+        view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         return view
     }
 
