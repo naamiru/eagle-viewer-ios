@@ -23,6 +23,7 @@ struct ImageDetailView: View {
     @State private var scale: CGFloat = 1
     
     @State private var isInfoPresented = false
+    @State private var isTextScrollAtTop = true
     
     private let prefetcher = ImagePrefetcher()
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
@@ -78,6 +79,7 @@ struct ImageDetailView: View {
         DragGesture()
             .onEnded { value in
                 guard scale == 1 else { return }
+                guard !selectedItem.isTextFile || isTextScrollAtTop else { return }
 
                 let w = abs(value.translation.width), h = value.translation.height
                 if h > 10, w < 20, w / h < 0.2 {
@@ -157,7 +159,11 @@ struct ImageDetailView: View {
                                         isNoUI: $isNoUI
                                     )
                                 } else if item.isTextFile {
-                                    ItemTextView(item: item)
+                                    ItemTextView(
+                                        item: item,
+                                        isSelected: isItemSelected,
+                                        isAtTop: $isTextScrollAtTop
+                                    )
                                 } else {
                                     ItemImageView(
                                         item: item,
@@ -299,94 +305,9 @@ struct ImageDetailView: View {
             withAnimation(.easeInOut(duration: 0.2)) {
                 thumbnailScrollId = selectedItem.itemId
             }
-        }
-    }
-}
-
-struct ItemTextView: View {
-    let item: Item
-
-    @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
-    @State private var textContent: String?
-    @State private var errorMessage: String?
-    @State private var isLoading = false
-
-    private var fileURL: URL? {
-        guard let currentLibraryURL = libraryFolderManager.currentLibraryURL else {
-            return nil
-        }
-
-        return currentLibraryURL.appending(path: item.imagePath, directoryHint: .notDirectory)
-    }
-
-    var body: some View {
-        Group {
-            if let textContent {
-                ScrollView {
-                    Text(verbatim: textContent)
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundColor(.primary)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(20)
-                }
-            } else if isLoading {
-                ProgressView()
-            } else {
-                VStack(spacing: 12) {
-                    Image(systemName: "doc.plaintext")
-                        .font(.system(size: 40, weight: .regular))
-                        .foregroundColor(.secondary)
-                    Text(errorMessage ?? "Unable to load text file.")
-                        .font(.callout)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if !selectedItem.isTextFile {
+                isTextScrollAtTop = true
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.secondarySystemBackground))
-        .task(id: item.itemId) {
-            await loadText()
-        }
-    }
-
-    @MainActor
-    private func loadText() async {
-        isLoading = true
-        textContent = nil
-        errorMessage = nil
-
-        guard let fileURL else {
-            isLoading = false
-            errorMessage = "File not available."
-            return
-        }
-
-        do {
-            let data = try await CloudFile.fileData(at: fileURL)
-            if let decoded = decodeText(from: data) {
-                textContent = decoded
-            } else {
-                errorMessage = "Unable to decode text file."
-            }
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-
-        isLoading = false
-    }
-
-    private func decodeText(from data: Data) -> String? {
-        if let string = String(data: data, encoding: .utf8) {
-            return string
-        }
-        if let string = String(data: data, encoding: .utf16) {
-            return string
-        }
-        if let string = String(data: data, encoding: .isoLatin1) {
-            return string
-        }
-        return nil
     }
 }
