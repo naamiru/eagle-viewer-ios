@@ -76,7 +76,7 @@ struct ImageDetailView: View {
     }
     
     private func dragCloseGesture() -> some Gesture {
-        DragGesture()
+        DragGesture(minimumDistance: 10)
             .onEnded { value in
                 guard scale == 1 else { return }
                 guard !selectedItem.isTextFile else { return }
