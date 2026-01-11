@@ -23,7 +23,6 @@ struct ImageDetailView: View {
     @State private var scale: CGFloat = 1
     
     @State private var isInfoPresented = false
-    @State private var isTextScrollAtTop = true
     
     private let prefetcher = ImagePrefetcher()
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
@@ -79,7 +78,7 @@ struct ImageDetailView: View {
         DragGesture()
             .onEnded { value in
                 guard scale == 1 else { return }
-                guard !selectedItem.isTextFile || isTextScrollAtTop else { return }
+                guard !selectedItem.isTextFile else { return }
 
                 let w = abs(value.translation.width), h = value.translation.height
                 if h > 10, w < 20, w / h < 0.2 {
@@ -161,8 +160,7 @@ struct ImageDetailView: View {
                                 } else if item.isTextFile {
                                     ItemTextView(
                                         item: item,
-                                        isSelected: isItemSelected,
-                                        isAtTop: $isTextScrollAtTop
+                                        isSelected: isItemSelected
                                     )
                                 } else {
                                     ItemImageView(
@@ -304,9 +302,6 @@ struct ImageDetailView: View {
             mainScrollId = selectedItem.itemId
             withAnimation(.easeInOut(duration: 0.2)) {
                 thumbnailScrollId = selectedItem.itemId
-            }
-            if !selectedItem.isTextFile {
-                isTextScrollAtTop = true
             }
         }
     }

@@ -6,19 +6,11 @@
 //
 
 import SwiftUI
-
-private struct TextScrollOffsetKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
+import UIKit
 
 struct ItemTextView: View {
     let item: Item
     let isSelected: Bool
-    @Binding var isAtTop: Bool
 
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
     @Environment(\.rootSafeAreaInsets) private var rootSafeAreaInsets
@@ -37,34 +29,16 @@ struct ItemTextView: View {
     var body: some View {
         Group {
             if let textContent {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        GeometryReader { proxy in
-                            Color.clear
-                                .preference(
-                                    key: TextScrollOffsetKey.self,
-                                    value: proxy.frame(in: .named("textScroll")).minY
-                                )
-                        }
-                        .frame(height: 0)
-
-                        Color.clear
-                            .frame(height: rootSafeAreaInsets.top + 70)
-
-                        Text(verbatim: textContent)
-                            .font(.body)
-                            .foregroundColor(.primary)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, rootSafeAreaInsets.bottom + 24)
-                    }
-                }
-                .coordinateSpace(name: "textScroll")
-                .onPreferenceChange(TextScrollOffsetKey.self) { offset in
-                    guard isSelected else { return }
-                    isAtTop = offset >= -1
-                }
+                SelectableTextView(
+                    text: textContent,
+                    isSelected: isSelected,
+                    contentInset: UIEdgeInsets(
+                        top: rootSafeAreaInsets.top + 70,
+                        left: 20,
+                        bottom: rootSafeAreaInsets.bottom + 24,
+                        right: 20
+                    )
+                )
             } else if isLoading {
                 ProgressView()
             } else {
@@ -85,14 +59,8 @@ struct ItemTextView: View {
             await loadText()
         }
         .onAppear {
-            if isSelected {
-                isAtTop = true
-            }
         }
         .onChange(of: isSelected) { _, newValue in
-            if newValue {
-                isAtTop = true
-            }
         }
     }
 
@@ -133,5 +101,52 @@ struct ItemTextView: View {
             return string
         }
         return nil
+    }
+}
+
+private struct SelectableTextView: UIViewRepresentable {
+    let text: String
+    let isSelected: Bool
+    let contentInset: UIEdgeInsets
+
+    func makeUIView(context: Context) -> UITextView {
+        let view = UITextView()
+        view.isEditable = false
+        view.isSelectable = true
+        view.isScrollEnabled = true
+        view.showsVerticalScrollIndicator = true
+        view.backgroundColor = .white
+        view.textColor = UIColor.label
+        view.font = UIFont.preferredFont(forTextStyle: .body)
+        view.adjustsFontForContentSizeCategory = true
+        view.textContainer.lineFragmentPadding = 0
+        view.textContainerInset = contentInset
+        view.delegate = context.coordinator
+        return view
+    }
+
+    func updateUIView(_ uiView: UITextView, context: Context) {
+        if uiView.text != text {
+            uiView.text = text
+        }
+        if uiView.textContainerInset != contentInset {
+            uiView.textContainerInset = contentInset
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(isSelected: { isSelected })
+    }
+
+    final class Coordinator: NSObject, UITextViewDelegate {
+        private let isSelected: () -> Bool
+
+        init(isSelected: @escaping () -> Bool) {
+            self.isSelected = isSelected
+        }
+
+        func scrollViewDidScroll(_ scrollView: UIScrollView) {
+            guard isSelected() else { return }
+        }
     }
 }
