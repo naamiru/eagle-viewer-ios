@@ -150,7 +150,6 @@ private struct MarkdownScrollContentView: View {
     @State private var suppressToggleUntil: Date = .distantPast
     @State private var lastScrollEnd: Date = .distantPast
     @State private var lastLinkTap: Date = .distantPast
-    @State private var isDragging = false
 
     var body: some View {
         ScrollView(.vertical) {
@@ -169,42 +168,40 @@ private struct MarkdownScrollContentView: View {
                 .padding(.bottom, bottomPadding)
         }
         .scrollIndicators(.visible)
-        .contentShape(Rectangle())
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 3)
-                .onChanged { value in
-                    guard abs(value.translation.height) >= abs(value.translation.width) else { return }
-                    if !isDragging {
-                        isDragging = true
-                    }
-                    suppressToggleUntil = Date().addingTimeInterval(0.2)
-                }
-                .onEnded { value in
-                    guard abs(value.translation.height) >= abs(value.translation.width) else { return }
-                    isDragging = false
-                    lastScrollEnd = Date()
-                    suppressToggleUntil = lastScrollEnd.addingTimeInterval(0.2)
-                }
-        )
-        .simultaneousGesture(
-            LongPressGesture(minimumDuration: 0.2)
-                .onEnded { _ in
-                    suppressToggleUntil = Date().addingTimeInterval(0.4)
-                }
-        )
-        .simultaneousGesture(
-            TapGesture()
-                .onEnded {
-                    handleTap()
+        .onScrollPhaseChange { oldPhase, newPhase in
+            // Suppress tap toggle during scrolling
+            if newPhase == .interacting || newPhase == .decelerating {
+                suppressToggleUntil = Date().addingTimeInterval(0.2)
             }
-        )
+
+            // Record scroll end time
+            if oldPhase != .idle && newPhase == .idle {
+                lastScrollEnd = Date()
+                suppressToggleUntil = lastScrollEnd.addingTimeInterval(0.2)
+            }
+        }
+        .simultaneousGesture(longPressGesture)
+        .simultaneousGesture(tapGesture)
+    }
+
+    private var longPressGesture: some Gesture {
+        LongPressGesture(minimumDuration: 0.2)
+            .onEnded { _ in
+                suppressToggleUntil = Date().addingTimeInterval(0.4)
+            }
+    }
+
+    private var tapGesture: some Gesture {
+        TapGesture()
+            .onEnded {
+                handleTap()
+            }
     }
 
     private func handleTap() {
         DispatchQueue.main.async {
             guard isSelected else { return }
             guard Date() >= suppressToggleUntil else { return }
-            guard !isDragging else { return }
             if Date().timeIntervalSince(lastScrollEnd) < 0.2 {
                 return
             }
