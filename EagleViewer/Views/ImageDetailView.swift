@@ -21,8 +21,9 @@ struct ImageDetailView: View {
     @State private var isThumbnailScrolling = false
 
     @State private var scale: CGFloat = 1
-    
+
     @State private var isInfoPresented = false
+    @State private var isNoUIBeforeTextItem: Bool?
     
     private let prefetcher = ImagePrefetcher()
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
@@ -91,6 +92,31 @@ struct ImageDetailView: View {
         self.scale = scale
     }
 
+    private func handleItemChange(oldItem: Item?, newItem: Item) {
+        // テキストファイル表示時の isNoUI 管理
+        let oldIsText = oldItem?.isTextFile == true
+        let newIsText = newItem.isTextFile
+
+        if !oldIsText && newIsText {
+            // 画像/動画 → テキスト: 保存してUIを表示
+            isNoUIBeforeTextItem = isNoUI
+            isNoUI = false
+        } else if oldIsText && !newIsText {
+            // テキスト → 画像/動画: 復元
+            if let saved = isNoUIBeforeTextItem {
+                isNoUI = saved
+                isNoUIBeforeTextItem = nil
+            }
+        }
+        // テキスト → テキスト: 何もしない
+
+        prefetchAdjacentImages(for: newItem)
+        mainScrollId = newItem.itemId
+        withAnimation(.easeInOut(duration: 0.2)) {
+            thumbnailScrollId = newItem.itemId
+        }
+    }
+
     private var backgroundColor: Color {
         if selectedItem.isTextFile {
             return Color(.systemBackground)
@@ -139,8 +165,7 @@ struct ImageDetailView: View {
                                 } else if item.isTextFile {
                                     ItemTextView(
                                         item: item,
-                                        isSelected: isItemSelected,
-                                        isNoUI: $isNoUI
+                                        isSelected: isItemSelected
                                     )
                                 } else {
                                     ItemImageView(
@@ -297,12 +322,8 @@ struct ImageDetailView: View {
                 selectedItem = item
             }
         }
-        .onChange(of: selectedItem) {
-            prefetchAdjacentImages(for: selectedItem)
-            mainScrollId = selectedItem.itemId
-            withAnimation(.easeInOut(duration: 0.2)) {
-                thumbnailScrollId = selectedItem.itemId
-            }
+        .onChange(of: selectedItem) { oldItem, newItem in
+            handleItemChange(oldItem: oldItem, newItem: newItem)
         }
     }
 }

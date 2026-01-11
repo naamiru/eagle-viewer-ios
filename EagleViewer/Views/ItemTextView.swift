@@ -12,7 +12,6 @@ import UIKit
 struct ItemTextView: View {
     let item: Item
     let isSelected: Bool
-    @Binding var isNoUI: Bool
 
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
     @Environment(\.rootSafeAreaInsets) private var rootSafeAreaInsets
@@ -36,8 +35,6 @@ struct ItemTextView: View {
                     if isMarkdownReady {
                         MarkdownScrollContentView(
                             markdown: textContent,
-                            isSelected: isSelected,
-                            isNoUI: $isNoUI,
                             topPadding: rootSafeAreaInsets.top + 70,
                             horizontalPadding: 20,
                             bottomPadding: rootSafeAreaInsets.bottom + 24
@@ -48,14 +45,9 @@ struct ItemTextView: View {
                 } else {
                     SelectableTextView(
                         text: textContent,
-                        isSelected: isSelected,
-                        isNoUI: $isNoUI,
-                        contentInset: UIEdgeInsets(
-                            top: rootSafeAreaInsets.top + 70,
-                            left: 20,
-                            bottom: rootSafeAreaInsets.bottom + 24,
-                            right: 20
-                        )
+                        topPadding: rootSafeAreaInsets.top + 70,
+                        horizontalPadding: 20,
+                        bottomPadding: rootSafeAreaInsets.bottom + 24
                     )
                 }
             } else if isLoading {
@@ -137,85 +129,39 @@ struct ItemTextView: View {
 
 private struct MarkdownScrollContentView: View {
     let markdown: String
-    let isSelected: Bool
-    @Binding var isNoUI: Bool
     let topPadding: CGFloat
     let horizontalPadding: CGFloat
     let bottomPadding: CGFloat
-
-    @State private var suppressToggleUntil: Date = .distantPast
-    @State private var lastScrollEnd: Date = .distantPast
-    @State private var lastLinkTap: Date = .distantPast
 
     var body: some View {
         ScrollView(.vertical) {
             StructuredText(markdown: markdown)
                 .textual.textSelection(.enabled)
-                .environment(
-                    \.openURL,
-                    OpenURLAction { _ in
-                        lastLinkTap = Date()
-                        return .systemAction
-                    }
-                )
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, topPadding)
                 .padding(.horizontal, horizontalPadding)
                 .padding(.bottom, bottomPadding)
         }
         .scrollIndicators(.visible)
-        .onScrollPhaseChange { oldPhase, newPhase in
-            // Suppress tap toggle during scrolling
-            if newPhase == .interacting || newPhase == .decelerating {
-                suppressToggleUntil = Date().addingTimeInterval(0.2)
-            }
-
-            // Record scroll end time
-            if oldPhase != .idle && newPhase == .idle {
-                lastScrollEnd = Date()
-                suppressToggleUntil = lastScrollEnd.addingTimeInterval(0.2)
-            }
-        }
-        .simultaneousGesture(longPressGesture)
-        .simultaneousGesture(tapGesture)
-    }
-
-    private var longPressGesture: some Gesture {
-        LongPressGesture(minimumDuration: 0.2)
-            .onEnded { _ in
-                suppressToggleUntil = Date().addingTimeInterval(0.4)
-            }
-    }
-
-    private var tapGesture: some Gesture {
-        TapGesture()
-            .onEnded {
-                handleTap()
-            }
-    }
-
-    private func handleTap() {
-        DispatchQueue.main.async {
-            guard isSelected else { return }
-            guard Date() >= suppressToggleUntil else { return }
-            if Date().timeIntervalSince(lastScrollEnd) < 0.2 {
-                return
-            }
-            if Date().timeIntervalSince(lastLinkTap) < 0.2 {
-                return
-            }
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isNoUI.toggle()
-            }
-        }
     }
 }
 
-private struct SelectableTextView: UIViewRepresentable {
+private struct SelectableTextView: View {
     let text: String
-    let isSelected: Bool
-    @Binding var isNoUI: Bool
-    let contentInset: UIEdgeInsets
+    let topPadding: CGFloat
+    let horizontalPadding: CGFloat
+    let bottomPadding: CGFloat
+
+    var body: some View {
+        TextViewRepresentable(text: text)
+            .padding(.top, topPadding)
+            .padding(.horizontal, horizontalPadding)
+            .padding(.bottom, bottomPadding)
+    }
+}
+
+private struct TextViewRepresentable: UIViewRepresentable {
+    let text: String
 
     func makeUIView(context: Context) -> UITextView {
         let view = UITextView()
@@ -228,85 +174,13 @@ private struct SelectableTextView: UIViewRepresentable {
         view.font = UIFont.preferredFont(forTextStyle: .body)
         view.adjustsFontForContentSizeCategory = true
         view.textContainer.lineFragmentPadding = 0
-        view.textContainerInset = contentInset
-        view.delegate = context.coordinator
-        let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
-        tapGesture.cancelsTouchesInView = false
-        tapGesture.delegate = context.coordinator
-        view.addGestureRecognizer(tapGesture)
+        view.textContainerInset = .zero
         return view
     }
 
     func updateUIView(_ uiView: UITextView, context: Context) {
         if uiView.text != text {
             uiView.text = text
-        }
-        if uiView.textContainerInset != contentInset {
-            uiView.textContainerInset = contentInset
-        }
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(isSelected: { isSelected }, isNoUI: $isNoUI)
-    }
-
-    final class Coordinator: NSObject, UITextViewDelegate, UIGestureRecognizerDelegate {
-        private let isSelected: () -> Bool
-        private var isNoUI: Binding<Bool>
-        private var suppressToggleUntil: Date = .distantPast
-        private var lastScrollEnd: Date = .distantPast
-
-        init(isSelected: @escaping () -> Bool, isNoUI: Binding<Bool>) {
-            self.isSelected = isSelected
-            self.isNoUI = isNoUI
-        }
-
-        func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-            suppressToggleUntil = Date().addingTimeInterval(0.2)
-        }
-
-        func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
-            if decelerate {
-                suppressToggleUntil = Date().addingTimeInterval(0.4)
-            } else {
-                lastScrollEnd = Date()
-                suppressToggleUntil = lastScrollEnd.addingTimeInterval(0.2)
-            }
-        }
-
-        func scrollViewWillBeginDecelerating(_ scrollView: UIScrollView) {
-            suppressToggleUntil = Date().addingTimeInterval(0.4)
-        }
-
-        func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-            lastScrollEnd = Date()
-            suppressToggleUntil = lastScrollEnd.addingTimeInterval(0.2)
-        }
-
-        func textViewDidChangeSelection(_ textView: UITextView) {
-            suppressToggleUntil = Date().addingTimeInterval(0.3)
-        }
-
-        func textViewDidBeginEditing(_ textView: UITextView) {
-            suppressToggleUntil = Date().addingTimeInterval(0.3)
-        }
-
-        @objc func handleTap(_ gesture: UITapGestureRecognizer) {
-            guard isSelected() else { return }
-            guard Date() >= suppressToggleUntil else { return }
-            guard let textView = gesture.view as? UITextView else { return }
-            guard !textView.isDragging, !textView.isDecelerating else { return }
-            if Date().timeIntervalSince(lastScrollEnd) < 0.2 {
-                return
-            }
-            guard textView.selectedRange.length == 0 else { return }
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isNoUI.wrappedValue.toggle()
-            }
-        }
-
-        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-            true
         }
     }
 }
