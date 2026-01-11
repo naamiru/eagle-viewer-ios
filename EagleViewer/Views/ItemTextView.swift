@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Textual
 import UIKit
 
 struct ItemTextView: View {
@@ -30,17 +31,28 @@ struct ItemTextView: View {
     var body: some View {
         Group {
             if let textContent {
-                SelectableTextView(
-                    text: textContent,
-                    isSelected: isSelected,
-                    isNoUI: $isNoUI,
-                    contentInset: UIEdgeInsets(
-                        top: rootSafeAreaInsets.top + 70,
-                        left: 20,
-                        bottom: rootSafeAreaInsets.bottom + 24,
-                        right: 20
+                if item.isMarkdownFile {
+                    MarkdownTextView(
+                        markdown: textContent,
+                        isSelected: isSelected,
+                        isNoUI: $isNoUI,
+                        topPadding: rootSafeAreaInsets.top + 70,
+                        horizontalPadding: 20,
+                        bottomPadding: rootSafeAreaInsets.bottom + 24
                     )
-                )
+                } else {
+                    SelectableTextView(
+                        text: textContent,
+                        isSelected: isSelected,
+                        isNoUI: $isNoUI,
+                        contentInset: UIEdgeInsets(
+                            top: rootSafeAreaInsets.top + 70,
+                            left: 20,
+                            bottom: rootSafeAreaInsets.bottom + 24,
+                            right: 20
+                        )
+                    )
+                }
             } else if isLoading {
                 ProgressView()
             } else {
@@ -113,6 +125,50 @@ struct ItemTextView: View {
             return string
         }
         return nil
+    }
+}
+
+private struct MarkdownTextView: View {
+    let markdown: String
+    let isSelected: Bool
+    @Binding var isNoUI: Bool
+    let topPadding: CGFloat
+    let horizontalPadding: CGFloat
+    let bottomPadding: CGFloat
+
+    @State private var suppressToggleUntil: Date = .distantPast
+
+    var body: some View {
+        ScrollView {
+            StructuredText(markdown: markdown)
+                .textual.textSelection(.enabled)
+                .textual.structuredTextStyle(.default)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, topPadding)
+                .padding(.horizontal, horizontalPadding)
+                .padding(.bottom, bottomPadding)
+        }
+        .onScrollPhaseChange { _, newPhase in
+            let now = Date()
+            if newPhase == .idle {
+                suppressToggleUntil = now.addingTimeInterval(0.2)
+            } else {
+                suppressToggleUntil = now.addingTimeInterval(0.4)
+            }
+        }
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.2)
+                .onChanged { _ in
+                    suppressToggleUntil = Date().addingTimeInterval(0.4)
+                }
+        )
+        .onTapGesture {
+            guard isSelected else { return }
+            guard Date() >= suppressToggleUntil else { return }
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isNoUI.toggle()
+            }
+        }
     }
 }
 

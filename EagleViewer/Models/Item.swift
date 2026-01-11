@@ -20,6 +20,10 @@ extension ItemPathProvider {
         ItemFileType.isText(ext: ext)
     }
 
+    var isMarkdownFile: Bool {
+        ItemFileType.isMarkdown(ext: ext)
+    }
+
     var imagePath: String {
         "images/\(itemId).info/\(name).\(ext)"
     }
@@ -44,8 +48,16 @@ struct ItemFileType {
         "log",
     ]
 
+    static let markdownExtensions: Set<String> = [
+        "md",
+    ]
+
     static func isText(ext: String) -> Bool {
         textExtensions.contains(ext.lowercased())
+    }
+
+    static func isMarkdown(ext: String) -> Bool {
+        markdownExtensions.contains(ext.lowercased())
     }
 }
 
