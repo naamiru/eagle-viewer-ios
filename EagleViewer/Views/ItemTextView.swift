@@ -29,25 +29,16 @@ struct ItemTextView: View {
     }
 
     var body: some View {
-        let topPaddingOffset: CGFloat = rootSafeAreaInsets.top > 30 ? 60 : 80
+        let topPaddingOffset: CGFloat = rootSafeAreaInsets.top > 30 ? 62 : 80
 
         Group {
             if let textContent {
-                if item.isMarkdownFile {
-                    if isMarkdownReady {
-                        MarkdownScrollContentView(
-                            markdown: textContent,
-                            topPadding: rootSafeAreaInsets.top + topPaddingOffset,
-                            leadingPadding: rootSafeAreaInsets.leading + 20,
-                            trailingPadding: rootSafeAreaInsets.trailing + 20,
-                            bottomPadding: rootSafeAreaInsets.bottom + 40
-                        )
-                    } else {
-                        ProgressView()
-                    }
+                if item.isMarkdownFile && !isMarkdownReady {
+                    ProgressView()
                 } else {
-                    SelectableTextView(
-                        text: textContent,
+                    TextScrollContentView(
+                        content: textContent,
+                        isMarkdown: item.isMarkdownFile,
                         topPadding: rootSafeAreaInsets.top + topPaddingOffset,
                         leadingPadding: rootSafeAreaInsets.leading + 20,
                         trailingPadding: rootSafeAreaInsets.trailing + 20,
@@ -131,8 +122,9 @@ struct ItemTextView: View {
     }
 }
 
-private struct MarkdownScrollContentView: View {
-    let markdown: String
+private struct TextScrollContentView: View {
+    let content: String
+    let isMarkdown: Bool
     let topPadding: CGFloat
     let leadingPadding: CGFloat
     let trailingPadding: CGFloat
@@ -140,33 +132,19 @@ private struct MarkdownScrollContentView: View {
 
     var body: some View {
         ScrollView(.vertical) {
-            StructuredText(markdown: markdown)
-                .textual.textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, topPadding)
-                .padding(.leading, leadingPadding)
-                .padding(.trailing, trailingPadding)
-                .padding(.bottom, bottomPadding)
-        }
-        .scrollIndicators(.visible)
-    }
-}
-
-private struct SelectableTextView: View {
-    let text: String
-    let topPadding: CGFloat
-    let leadingPadding: CGFloat
-    let trailingPadding: CGFloat
-    let bottomPadding: CGFloat
-
-    var body: some View {
-        ScrollView(.vertical) {
-            TextViewRepresentable(text: text)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, topPadding)
-                .padding(.leading, leadingPadding)
-                .padding(.trailing, trailingPadding)
-                .padding(.bottom, bottomPadding)
+            Group {
+                if isMarkdown {
+                    StructuredText(markdown: content)
+                        .textual.textSelection(.enabled)
+                } else {
+                    TextViewRepresentable(text: content)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, topPadding)
+            .padding(.leading, leadingPadding)
+            .padding(.trailing, trailingPadding)
+            .padding(.bottom, bottomPadding)
         }
         .scrollIndicators(.visible)
     }
