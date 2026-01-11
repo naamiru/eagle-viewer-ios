@@ -91,56 +91,27 @@ struct ImageDetailView: View {
         self.scale = scale
     }
     
-    var header: some View {
-        VStack {
-            HStack {
-                Button(action: {
-                    dismiss(selectedItem)
-                }) {
-                    Image(systemName: "chevron.down")
-                        .foregroundColor(.primary)
-                }
-                .frame(width: 44, height: 44)
-                .contentShape(.circle)
-                .regularGlassEffect(interactive: true)
-                
-                Spacer()
-                
-                Button(action: {
-                    isInfoPresented.toggle()
-                }) {
-                    Text(selectedItem.name)
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                        .lineLimit(1)
-                    
-                    Image(systemName: "info.circle")
-                        .foregroundColor(.primary)
-                }
-                .padding(.horizontal)
-                .frame(height: 44)
-                .contentShape(RoundedRectangle(cornerRadius: 22))
-                .regularGlassEffect(interactive: true)
-                
-                Spacer()
-                
-                if let imageURL = getImageURL(for: selectedItem) {
-                    ShareLink(item: imageURL) {
-                        Image(systemName: "square.and.arrow.up")
-                            .foregroundColor(.primary)
-                    }
-                    .frame(width: 44, height: 44)
-                    .contentShape(.circle)
-                    .regularGlassEffect(interactive: true)
-                }
-            }
-            Spacer()
-        }
-        .padding(.horizontal)
-    }
-    
     var body: some View {
         GeometryReader { geometry in
+            let titleMaxWidth = max(0, geometry.size.width - 160)
+            let titleButton = Button(action: {
+                isInfoPresented.toggle()
+            }) {
+                HStack(spacing: 8) {
+                    Text(selectedItem.name)
+                        .font(.headline)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Image(systemName: "info.circle")
+                        .font(.body.weight(.regular))
+                }
+                .foregroundColor(.primary)
+                .frame(height: 44)
+                .padding(.horizontal, 16)
+            }
+            .buttonStyle(.plain)
+            .regularGlassEffect(interactive: true)
+
             ZStack {
                 (isNoUI ? Color.black : Color(.systemBackground))
                     .ignoresSafeArea()
@@ -190,14 +161,6 @@ struct ImageDetailView: View {
                     mainScrollId = selectedItem.itemId
                 }
                 .simultaneousGesture(dragCloseGesture())
-                
-                if !isNoUI {
-                    VStack {
-                        header
-                        Spacer()
-                    }
-                    .transition(.opacity)
-                }
                 
                 if !isNoUI {
                     VStack {
@@ -273,11 +236,39 @@ struct ImageDetailView: View {
                     .transition(.opacity)
                 }
             }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: {
+                        dismiss(selectedItem)
+                    }) {
+                        Image(systemName: "chevron.down")
+                            .foregroundColor(.primary)
+                    }
+                }
+
+                ToolbarItem(placement: .principal) {
+                    ViewThatFits(in: .horizontal) {
+                        titleButton
+                        titleButton.frame(maxWidth: titleMaxWidth)
+                    }
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    if let imageURL = getImageURL(for: selectedItem) {
+                        ShareLink(item: imageURL) {
+                            Image(systemName: "square.and.arrow.up")
+                                .foregroundColor(.primary)
+                        }
+                    }
+                }
+            }
+            .toolbar(isNoUI ? .hidden : .visible, for: .navigationBar)
         }
         .sheet(isPresented: $isInfoPresented) {
             ItemInfoView(item: selectedItem)
                 .presentationDetents([.medium, .large])
         }
+        .navigationBarTitleDisplayMode(.inline)
         .statusBar(hidden: isNoUI)
         .onAppear {
             prefetchAdjacentImages(for: selectedItem)
