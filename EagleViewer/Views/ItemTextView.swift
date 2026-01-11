@@ -5,8 +5,8 @@
 //  Created on 2025/08/24
 //
 
+import MarkdownUI
 import SwiftUI
-import Textual
 import UIKit
 
 struct ItemTextView: View {
@@ -19,6 +19,7 @@ struct ItemTextView: View {
     @State private var textContent: String?
     @State private var errorMessage: String?
     @State private var isLoading = false
+    @State private var isMarkdownReady = false
 
     private var fileURL: URL? {
         guard let currentLibraryURL = libraryFolderManager.currentLibraryURL else {
@@ -32,14 +33,20 @@ struct ItemTextView: View {
         Group {
             if let textContent {
                 if item.isMarkdownFile {
-                    MarkdownTextView(
-                        markdown: textContent,
-                        isSelected: isSelected,
-                        isNoUI: $isNoUI,
-                        topPadding: rootSafeAreaInsets.top + 70,
-                        horizontalPadding: 20,
-                        bottomPadding: rootSafeAreaInsets.bottom + 24
-                    )
+                    if isMarkdownReady {
+                        MarkdownScrollContentView(
+                            markdown: textContent,
+                            baseURL: fileURL?.deletingLastPathComponent(),
+                            imageBaseURL: fileURL?.deletingLastPathComponent(),
+                            isSelected: isSelected,
+                            isNoUI: $isNoUI,
+                            topPadding: rootSafeAreaInsets.top + 70,
+                            horizontalPadding: 20,
+                            bottomPadding: rootSafeAreaInsets.bottom + 24
+                        )
+                    } else {
+                        ProgressView()
+                    }
                 } else {
                     SelectableTextView(
                         text: textContent,
@@ -72,10 +79,6 @@ struct ItemTextView: View {
         .task(id: item.itemId) {
             await loadText()
         }
-        .onAppear {
-        }
-        .onChange(of: isSelected) { _, newValue in
-        }
     }
 
     private func loadText() async {
@@ -83,6 +86,7 @@ struct ItemTextView: View {
             isLoading = true
             textContent = nil
             errorMessage = nil
+            isMarkdownReady = !item.isMarkdownFile
         }
 
         guard let fileURL else {
@@ -101,6 +105,11 @@ struct ItemTextView: View {
                     textContent = decoded
                 } else {
                     errorMessage = "Unable to decode text file."
+                }
+            }
+            if item.isMarkdownFile, decoded != nil {
+                await MainActor.run {
+                    isMarkdownReady = true
                 }
             }
         } catch {
@@ -128,8 +137,10 @@ struct ItemTextView: View {
     }
 }
 
-private struct MarkdownTextView: View {
+private struct MarkdownScrollContentView: View {
     let markdown: String
+    let baseURL: URL?
+    let imageBaseURL: URL?
     let isSelected: Bool
     @Binding var isNoUI: Bool
     let topPadding: CGFloat
@@ -137,34 +148,69 @@ private struct MarkdownTextView: View {
     let bottomPadding: CGFloat
 
     @State private var suppressToggleUntil: Date = .distantPast
+    @State private var lastScrollEnd: Date = .distantPast
+    @State private var lastLinkTap: Date = .distantPast
+    @State private var isDragging = false
 
     var body: some View {
-        ScrollView {
-            StructuredText(markdown: markdown)
-                .textual.textSelection(.enabled)
-                .textual.structuredTextStyle(.default)
+        ScrollView(.vertical) {
+            Markdown(markdown, baseURL: baseURL, imageBaseURL: imageBaseURL)
+                .textSelection(.enabled)
+                .environment(
+                    \.openURL,
+                    OpenURLAction { _ in
+                        lastLinkTap = Date()
+                        return .systemAction
+                    }
+                )
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, topPadding)
                 .padding(.horizontal, horizontalPadding)
                 .padding(.bottom, bottomPadding)
         }
-        .onScrollPhaseChange { _, newPhase in
-            let now = Date()
-            if newPhase == .idle {
-                suppressToggleUntil = now.addingTimeInterval(0.2)
-            } else {
-                suppressToggleUntil = now.addingTimeInterval(0.4)
-            }
-        }
+        .scrollIndicators(.visible)
+        .contentShape(Rectangle())
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 3)
+                .onChanged { value in
+                    guard abs(value.translation.height) >= abs(value.translation.width) else { return }
+                    if !isDragging {
+                        isDragging = true
+                    }
+                    suppressToggleUntil = Date().addingTimeInterval(0.2)
+                }
+                .onEnded { value in
+                    guard abs(value.translation.height) >= abs(value.translation.width) else { return }
+                    isDragging = false
+                    lastScrollEnd = Date()
+                    suppressToggleUntil = lastScrollEnd.addingTimeInterval(0.2)
+                }
+        )
         .simultaneousGesture(
             LongPressGesture(minimumDuration: 0.2)
-                .onChanged { _ in
+                .onEnded { _ in
                     suppressToggleUntil = Date().addingTimeInterval(0.4)
                 }
         )
-        .onTapGesture {
+        .simultaneousGesture(
+            TapGesture()
+                .onEnded {
+                    handleTap()
+            }
+        )
+    }
+
+    private func handleTap() {
+        DispatchQueue.main.async {
             guard isSelected else { return }
             guard Date() >= suppressToggleUntil else { return }
+            guard !isDragging else { return }
+            if Date().timeIntervalSince(lastScrollEnd) < 0.2 {
+                return
+            }
+            if Date().timeIntervalSince(lastLinkTap) < 0.2 {
+                return
+            }
             withAnimation(.easeInOut(duration: 0.2)) {
                 isNoUI.toggle()
             }
@@ -220,10 +266,6 @@ private struct SelectableTextView: UIViewRepresentable {
         init(isSelected: @escaping () -> Bool, isNoUI: Binding<Bool>) {
             self.isSelected = isSelected
             self.isNoUI = isNoUI
-        }
-
-        func scrollViewDidScroll(_ scrollView: UIScrollView) {
-            guard isSelected() else { return }
         }
 
         func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
