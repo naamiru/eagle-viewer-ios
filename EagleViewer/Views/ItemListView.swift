@@ -26,7 +26,12 @@ struct ItemListView: View {
             return true
         }
 
-        if item.ext == "webp" || item.ext == "gif" {
+        if item.isTextFile {
+            return true
+        }
+
+        let ext = item.ext.lowercased()
+        if ext == "webp" || ext == "gif" {
             return true
         }
 

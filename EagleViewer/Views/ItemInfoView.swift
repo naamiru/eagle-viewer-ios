@@ -61,7 +61,7 @@ struct ItemInfoOverview: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(verbatim: item.name)
                 .bold()
-            Text(verbatim: "\(item.ext.uppercased()) · \(item.width) × \(item.height) · \(sizeText(item.size))")
+            Text(verbatim: metadataText)
                 .font(.caption)
                 .foregroundColor(.secondary)
 
@@ -92,6 +92,15 @@ struct ItemInfoOverview: View {
         } else {
             return "\(sizeInBytes)B"
         }
+    }
+
+    private var metadataText: String {
+        let extText = item.ext.uppercased()
+        let size = sizeText(item.size)
+        if item.isTextFile {
+            return "\(extText) · \(size)"
+        }
+        return "\(extText) · \(item.width) × \(item.height) · \(size)"
     }
 }
 

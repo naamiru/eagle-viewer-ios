@@ -16,6 +16,14 @@ protocol ItemPathProvider {
 }
 
 extension ItemPathProvider {
+    var isTextFile: Bool {
+        ItemFileType.isText(ext: ext)
+    }
+
+    var isMarkdownFile: Bool {
+        ItemFileType.isMarkdown(ext: ext)
+    }
+
     var imagePath: String {
         "images/\(itemId).info/\(name).\(ext)"
     }
@@ -28,6 +36,28 @@ extension ItemPathProvider {
             // Use thumbnail
             return "images/\(itemId).info/\(name)_thumbnail.png"
         }
+    }
+}
+
+struct ItemFileType {
+    static let textExtensions: Set<String> = [
+        "txt",
+        "md",
+        "json",
+        "yaml",
+        "log",
+    ]
+
+    static let markdownExtensions: Set<String> = [
+        "md",
+    ]
+
+    static func isText(ext: String) -> Bool {
+        textExtensions.contains(ext.lowercased())
+    }
+
+    static func isMarkdown(ext: String) -> Bool {
+        markdownExtensions.contains(ext.lowercased())
     }
 }
 

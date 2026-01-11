@@ -45,7 +45,7 @@ struct MainView: View {
                let items = imageViewerManager.items,
                let dismiss = imageViewerManager.dismiss
             {
-                Group {
+                NavigationStack {
                     ImageDetailView(
                         item: item,
                         items: items,

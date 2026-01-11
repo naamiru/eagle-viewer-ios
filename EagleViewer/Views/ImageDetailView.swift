@@ -21,8 +21,9 @@ struct ImageDetailView: View {
     @State private var isThumbnailScrolling = false
 
     @State private var scale: CGFloat = 1
-    
+
     @State private var isInfoPresented = false
+    @State private var isNoUIBeforeTextItem: Bool?
     
     private let prefetcher = ImagePrefetcher()
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
@@ -50,14 +51,20 @@ struct ImageDetailView: View {
         
         if currentIndex > 0 {
             let prevItem = items[currentIndex - 1]
-            if !ItemVideoView.isVideo(item: prevItem), let prevURL = getImageURL(for: prevItem) {
+            if !ItemVideoView.isVideo(item: prevItem),
+               !prevItem.isTextFile,
+               let prevURL = getImageURL(for: prevItem)
+            {
                 urlsToPrefetch.append(prevURL)
             }
         }
         
         if currentIndex < items.count - 1 {
             let nextItem = items[currentIndex + 1]
-            if !ItemVideoView.isVideo(item: nextItem), let nextURL = getImageURL(for: nextItem) {
+            if !ItemVideoView.isVideo(item: nextItem),
+               !nextItem.isTextFile,
+               let nextURL = getImageURL(for: nextItem)
+            {
                 urlsToPrefetch.append(nextURL)
             }
         }
@@ -69,9 +76,10 @@ struct ImageDetailView: View {
     }
     
     private func dragCloseGesture() -> some Gesture {
-        DragGesture()
+        DragGesture(minimumDistance: 10)
             .onEnded { value in
                 guard scale == 1 else { return }
+                guard !selectedItem.isTextFile else { return }
 
                 let w = abs(value.translation.width), h = value.translation.height
                 if h > 10, w < 20, w / h < 0.2 {
@@ -83,59 +91,63 @@ struct ImageDetailView: View {
     private func onScaleChanged(_ scale: CGFloat) {
         self.scale = scale
     }
-    
-    var header: some View {
-        VStack {
-            HStack {
-                Button(action: {
-                    dismiss(selectedItem)
-                }) {
-                    Image(systemName: "chevron.down")
-                        .foregroundColor(.primary)
-                }
-                .frame(width: 44, height: 44)
-                .contentShape(.circle)
-                .regularGlassEffect(interactive: true)
-                
-                Spacer()
-                
-                Button(action: {
-                    isInfoPresented.toggle()
-                }) {
-                    Text(selectedItem.name)
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                        .lineLimit(1)
-                    
-                    Image(systemName: "info.circle")
-                        .foregroundColor(.primary)
-                }
-                .padding(.horizontal)
-                .frame(height: 44)
-                .contentShape(RoundedRectangle(cornerRadius: 22))
-                .regularGlassEffect(interactive: true)
-                
-                Spacer()
-                
-                if let imageURL = getImageURL(for: selectedItem) {
-                    ShareLink(item: imageURL) {
-                        Image(systemName: "square.and.arrow.up")
-                            .foregroundColor(.primary)
-                    }
-                    .frame(width: 44, height: 44)
-                    .contentShape(.circle)
-                    .regularGlassEffect(interactive: true)
-                }
+
+    private func handleItemChange(oldItem: Item?, newItem: Item) {
+        // Manage isNoUI state when switching to/from text files
+        let oldIsText = oldItem?.isTextFile == true
+        let newIsText = newItem.isTextFile
+
+        if !oldIsText && newIsText {
+            // Image/Video → Text: Save state and show UI
+            isNoUIBeforeTextItem = isNoUI
+            isNoUI = false
+        } else if oldIsText && !newIsText {
+            // Text → Image/Video: Restore saved state
+            if let saved = isNoUIBeforeTextItem {
+                isNoUI = saved
+                isNoUIBeforeTextItem = nil
             }
-            Spacer()
         }
-        .padding(.horizontal)
+        // Text → Text: Do nothing (avoids flicker, preserves state)
+
+        prefetchAdjacentImages(for: newItem)
+        mainScrollId = newItem.itemId
+        withAnimation(.easeInOut(duration: 0.2)) {
+            thumbnailScrollId = newItem.itemId
+        }
+    }
+
+    private var backgroundColor: Color {
+        if selectedItem.isTextFile {
+            return Color(.systemBackground)
+        }
+
+        return isNoUI ? .black : Color(.systemBackground)
     }
     
     var body: some View {
         GeometryReader { geometry in
+            let titleMaxWidth = max(0, geometry.size.width - 160)
+            let titleButton = Button(action: {
+                isInfoPresented.toggle()
+            }) {
+                HStack(spacing: 8) {
+                    Text(selectedItem.name)
+                        .font(.headline)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Image(systemName: "info.circle")
+                        .font(.body.weight(.regular))
+                }
+                .foregroundColor(.primary)
+                .frame(height: 44)
+                .padding(.horizontal, 16)
+            }
+            .buttonStyle(.plain)
+            .regularGlassEffect(interactive: true)
+
             ZStack {
-                (isNoUI ? Color.black : Color(.systemBackground))
+                backgroundColor
                     .ignoresSafeArea()
                 
                 ScrollView(.horizontal) {
@@ -149,6 +161,11 @@ struct ImageDetailView: View {
                                         item: item,
                                         isSelected: isItemSelected,
                                         isNoUI: $isNoUI
+                                    )
+                                } else if item.isTextFile {
+                                    ItemTextView(
+                                        item: item,
+                                        isSelected: isItemSelected
                                     )
                                 } else {
                                     ItemImageView(
@@ -181,14 +198,6 @@ struct ImageDetailView: View {
                 
                 if !isNoUI {
                     VStack {
-                        header
-                        Spacer()
-                    }
-                    .transition(.opacity)
-                }
-                
-                if !isNoUI {
-                    VStack {
                         Spacer()
                         ScrollView(.horizontal) {
                             LazyHStack(spacing: 3) {
@@ -198,7 +207,7 @@ struct ImageDetailView: View {
                                     let isBeforeSelected = selectedIndex != nil && !isThumbnailScrolling && index < selectedIndex!
                                     let isAfterSelected = selectedIndex != nil && !isThumbnailScrolling && index > selectedIndex!
                                     
-                                    ItemThumbnailView(item: item)
+                                    ItemThumbnailView(item: item, textThumbnailStyle: .detailSlider)
                                         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                                         .aspectRatio(isSelected ? 1.0 : 0.7, contentMode: .fill)
                                         .clipShape(RoundedRectangle(cornerRadius: 3))
@@ -261,11 +270,39 @@ struct ImageDetailView: View {
                     .transition(.opacity)
                 }
             }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: {
+                        dismiss(selectedItem)
+                    }) {
+                        Image(systemName: "chevron.down")
+                            .foregroundColor(.primary)
+                    }
+                }
+
+                ToolbarItem(placement: .principal) {
+                    ViewThatFits(in: .horizontal) {
+                        titleButton
+                        titleButton.frame(maxWidth: titleMaxWidth)
+                    }
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    if let imageURL = getImageURL(for: selectedItem) {
+                        ShareLink(item: imageURL) {
+                            Image(systemName: "square.and.arrow.up")
+                                .foregroundColor(.primary)
+                        }
+                    }
+                }
+            }
+            .toolbar(isNoUI ? .hidden : .visible, for: .navigationBar)
         }
         .sheet(isPresented: $isInfoPresented) {
             ItemInfoView(item: selectedItem)
                 .presentationDetents([.medium, .large])
         }
+        .navigationBarTitleDisplayMode(.inline)
         .statusBar(hidden: isNoUI)
         .onAppear {
             prefetchAdjacentImages(for: selectedItem)
@@ -285,12 +322,8 @@ struct ImageDetailView: View {
                 selectedItem = item
             }
         }
-        .onChange(of: selectedItem) {
-            prefetchAdjacentImages(for: selectedItem)
-            mainScrollId = selectedItem.itemId
-            withAnimation(.easeInOut(duration: 0.2)) {
-                thumbnailScrollId = selectedItem.itemId
-            }
+        .onChange(of: selectedItem) { oldItem, newItem in
+            handleItemChange(oldItem: oldItem, newItem: newItem)
         }
     }
 }
