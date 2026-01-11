@@ -330,7 +330,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.9;
+				MARKETING_VERSION = 1.2.10;
 				PRODUCT_BUNDLE_IDENTIFIER = com.naamiru.EagleViewer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -368,7 +368,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.9;
+				MARKETING_VERSION = 1.2.10;
 				PRODUCT_BUNDLE_IDENTIFIER = com.naamiru.EagleViewer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
