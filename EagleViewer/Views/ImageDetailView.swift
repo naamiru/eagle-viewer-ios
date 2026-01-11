@@ -93,22 +93,22 @@ struct ImageDetailView: View {
     }
 
     private func handleItemChange(oldItem: Item?, newItem: Item) {
-        // テキストファイル表示時の isNoUI 管理
+        // Manage isNoUI state when switching to/from text files
         let oldIsText = oldItem?.isTextFile == true
         let newIsText = newItem.isTextFile
 
         if !oldIsText && newIsText {
-            // 画像/動画 → テキスト: 保存してUIを表示
+            // Image/Video → Text: Save state and show UI
             isNoUIBeforeTextItem = isNoUI
             isNoUI = false
         } else if oldIsText && !newIsText {
-            // テキスト → 画像/動画: 復元
+            // Text → Image/Video: Restore saved state
             if let saved = isNoUIBeforeTextItem {
                 isNoUI = saved
                 isNoUIBeforeTextItem = nil
             }
         }
-        // テキスト → テキスト: 何もしない
+        // Text → Text: Do nothing (avoids flicker, preserves state)
 
         prefetchAdjacentImages(for: newItem)
         mainScrollId = newItem.itemId
