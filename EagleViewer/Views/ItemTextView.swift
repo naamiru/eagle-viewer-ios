@@ -12,6 +12,7 @@ import UIKit
 struct ItemTextView: View {
     let item: Item
     let isSelected: Bool
+    let onDismiss: () -> Void
 
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
     @Environment(\.rootSafeAreaInsets) private var rootSafeAreaInsets
@@ -42,7 +43,8 @@ struct ItemTextView: View {
                         topPadding: rootSafeAreaInsets.top + topPaddingOffset,
                         leadingPadding: rootSafeAreaInsets.leading + 20,
                         trailingPadding: rootSafeAreaInsets.trailing + 20,
-                        bottomPadding: rootSafeAreaInsets.bottom + 40
+                        bottomPadding: rootSafeAreaInsets.bottom + 40,
+                        onDismiss: onDismiss
                     )
                 }
             } else if isLoading {
@@ -129,6 +131,10 @@ private struct TextScrollContentView: View {
     let leadingPadding: CGFloat
     let trailingPadding: CGFloat
     let bottomPadding: CGFloat
+    let onDismiss: () -> Void
+
+    @State private var isDragToCloseEnabled = false
+    @State private var scrollOffset: CGFloat = 0
 
     var body: some View {
         ScrollView(.vertical) {
@@ -147,6 +153,30 @@ private struct TextScrollContentView: View {
             .padding(.bottom, bottomPadding)
         }
         .scrollIndicators(.visible)
+        .onScrollGeometryChange(for: CGFloat.self) { geometry in
+            geometry.contentOffset.y
+        } action: { oldValue, newValue in
+            scrollOffset = newValue
+
+            // Disable if scrolled downward during gesture
+            if isDragToCloseEnabled && newValue > 0 {
+                isDragToCloseEnabled = false
+            }
+        }
+        .onScrollPhaseChange { oldPhase, newPhase in
+            if oldPhase == .idle && newPhase == .interacting {
+                // Enable only if drag started at top
+                isDragToCloseEnabled = (scrollOffset <= 0)
+            } else if oldPhase == .interacting && newPhase == .decelerating {
+                // Check threshold when finger is released
+                if isDragToCloseEnabled && scrollOffset < -40 {
+                    onDismiss()
+                }
+                isDragToCloseEnabled = false
+            } else if newPhase == .idle {
+                isDragToCloseEnabled = false
+            }
+        }
     }
 }
 
