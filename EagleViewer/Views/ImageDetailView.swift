@@ -165,7 +165,8 @@ struct ImageDetailView: View {
                                 } else if item.isTextFile {
                                     ItemTextView(
                                         item: item,
-                                        isSelected: isItemSelected
+                                        isSelected: isItemSelected,
+                                        onDismiss: { dismiss(selectedItem) }
                                     )
                                 } else {
                                     ItemImageView(
