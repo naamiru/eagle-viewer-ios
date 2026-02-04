@@ -62,7 +62,7 @@ struct ItemTextView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.white)
+        .background(Color(uiColor: .systemBackground))
         .task(id: item.itemId) {
             await loadText()
         }
