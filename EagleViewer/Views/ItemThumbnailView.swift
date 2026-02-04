@@ -108,7 +108,7 @@ struct TextThumbnailView: View {
                     .foregroundColor(.secondary.opacity(0.8))
                     .font(.system(size: 20, weight: .regular))
                     .padding(6)
-                    .background(Color.white)
+                    .background(Color(uiColor: .secondarySystemBackground))
             }
         }
         .onAppear {
