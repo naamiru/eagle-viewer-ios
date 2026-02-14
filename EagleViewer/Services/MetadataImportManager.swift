@@ -80,12 +80,15 @@ class MetadataImportManager: ObservableObject {
                 }
             case .gdrive(let fileId):
                 let user = try await GoogleAuthManager.ensureSignedIn()
-                
+
                 let service = GTLRDriveService()
                 service.authorizer = user.fetcherAuthorizer
                 service.shouldFetchNextPages = true
-                
+
                 source = .gdrive(service: service, fileId: fileId)
+            case .onedrive(let itemId):
+                let accessToken = try await OneDriveAuthManager.ensureSignedIn()
+                source = .onedrive(accessToken: accessToken, itemId: itemId)
             }
             
             // Ensure security-scoped resource is released when task of local library ends

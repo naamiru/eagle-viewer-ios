@@ -14,6 +14,7 @@ struct MetadataImporter {
     enum Source {
         case url(url: URL)
         case gdrive(service: GTLRDriveService, fileId: String)
+        case onedrive(accessToken: String, itemId: String)
     }
 
     struct MetadataJSON: Decodable {
@@ -633,6 +634,8 @@ func createRootSourceEntity(_ source: MetadataImporter.Source) -> any SourceEnti
         return URLSourceEntity(url: url)
     case .gdrive(let service, let fileId):
         return GoogleDriveSourceEntity(service: service, fileId: fileId)
+    case .onedrive(let accessToken, let itemId):
+        return OneDriveSourceEntity(accessToken: accessToken, itemId: itemId)
     }
 }
 

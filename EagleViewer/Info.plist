@@ -12,8 +12,18 @@
 				<string>com.googleusercontent.apps.741282793927-cg37c3ps9bsbrteg3q1rntss2e2fa81d</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>msauth.com.naamiru.EagleViewer</string>
+			</array>
+		</dict>
 	</array>
 	<key>GIDClientID</key>
 	<string>741282793927-cg37c3ps9bsbrteg3q1rntss2e2fa81d.apps.googleusercontent.com</string>
+	<key>OneDriveClientID</key>
+	<string>YOUR_ONEDRIVE_CLIENT_ID</string>
 </dict>
 </plist>
