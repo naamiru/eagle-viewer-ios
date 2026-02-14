@@ -87,8 +87,10 @@ class MetadataImportManager: ObservableObject {
 
                 source = .gdrive(service: service, fileId: fileId)
             case .onedrive(let itemId):
-                let accessToken = try await OneDriveAuthManager.ensureSignedIn()
-                source = .onedrive(accessToken: accessToken, itemId: itemId)
+                // Verify user is signed in before starting import.
+                // OneDriveSourceEntity handles token refresh internally via getValidAccessToken().
+                _ = try await OneDriveAuthManager.ensureSignedIn()
+                source = .onedrive(itemId: itemId)
             }
             
             // Ensure security-scoped resource is released when task of local library ends

@@ -27,7 +27,7 @@ enum LibrarySelectionError: LocalizedError {
         case .metadataNotFound:
             return String(localized: "metadata.json not found in the selected folder")
         case .unsupportedVersion(let version):
-            return String(localized: "This app only supports Eagle version 4.x. Your library is using version \(version).")
+            return String(localized: "This app requires Eagle version 2.0 or later. Your library is using version \(version).")
         case .versionNotFound:
             return String(localized: "Unable to determine Eagle version from metadata.json")
         case .emptyLibraryName:
@@ -252,7 +252,7 @@ struct LibraryFolderSelectView: View {
         )) {
             if let token = oneDriveAccessToken {
                 OneDriveFolderPickerView(accessToken: token) { libraryName, itemId in
-                    handleOneDriveSelection(accessToken: token, libraryName: libraryName, itemId: itemId)
+                    handleOneDriveSelection(libraryName: libraryName, itemId: itemId)
                     oneDriveAccessToken = nil
                 }
             }
@@ -310,12 +310,12 @@ struct LibraryFolderSelectView: View {
         }
     }
 
-    private func handleOneDriveSelection(accessToken: String, libraryName: String, itemId: String) {
+    private func handleOneDriveSelection(libraryName: String, itemId: String) {
         isProcessingOnedrive = true
         selectionTask?.cancel()
         selectionTask = Task {
             do {
-                try await LibraryValidator.validateMetadata(accessToken: accessToken, itemId: itemId)
+                try await LibraryValidator.validateMetadata(itemId: itemId)
                 await MainActor.run {
                     onSelect(libraryName, .onedrive(itemId: itemId))
                     isProcessingOnedrive = false
@@ -409,13 +409,14 @@ enum LibraryValidator {
         struct MetadataVersion: Decodable {
             let applicationVersion: String?
         }
-        
+
         let decoder = JSONDecoder()
         let metadata = try decoder.decode(MetadataVersion.self, from: data)
-        
-        // Check if applicationVersion exists and starts with "4."
+
+        // Check if applicationVersion exists and is >= 2.0
         if let version = metadata.applicationVersion {
-            guard version.hasPrefix("4.") else {
+            let major = version.split(separator: ".").first.flatMap { Int($0) } ?? 0
+            guard major >= 2 else {
                 throw LibrarySelectionError.unsupportedVersion(version)
             }
         } else {
@@ -430,8 +431,8 @@ enum LibraryValidator {
         try validateMetadata(metadata)
     }
 
-    static func validateMetadata(accessToken: String, itemId: String) async throws {
-        let rootEntity = OneDriveSourceEntity(accessToken: accessToken, itemId: itemId)
+    static func validateMetadata(itemId: String) async throws {
+        let rootEntity = OneDriveSourceEntity(itemId: itemId)
         let metadataEntity = try await rootEntity.appending("metadata.json", isFolder: false)
         let metadata = try await metadataEntity.getData()
         try validateMetadata(metadata)

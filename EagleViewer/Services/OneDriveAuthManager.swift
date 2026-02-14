@@ -95,6 +95,37 @@ enum OneDriveAuthManager {
         return try await performSignIn()
     }
 
+    /// Returns a valid access token without requiring MainActor.
+    /// Uses cached/stored token or refreshes via refresh_token.
+    /// Does NOT trigger interactive sign-in — throws if no valid session exists.
+    /// Safe to call from background import tasks.
+    static func getValidAccessToken() async throws -> String {
+        // Try cached token
+        if let token = cachedAccessToken, let exp = cachedExpiration, exp > Date().addingTimeInterval(60) {
+            return token
+        }
+
+        // Try stored token
+        if let token = keychainRead(service: keychainServiceAccessToken),
+           let expStr = keychainRead(service: keychainServiceExpiration),
+           let expInterval = TimeInterval(expStr)
+        {
+            let expDate = Date(timeIntervalSince1970: expInterval)
+            if expDate > Date().addingTimeInterval(60) {
+                cachedAccessToken = token
+                cachedExpiration = expDate
+                return token
+            }
+        }
+
+        // Try refresh
+        if let refreshToken = keychainRead(service: keychainServiceRefreshToken) {
+            return try await refreshAccessToken(refreshToken)
+        }
+
+        throw OneDriveAuthError.notSignedIn
+    }
+
     static func isSignedIn() -> Bool {
         // Check for refresh token existence as the durable indicator
         return keychainRead(service: keychainServiceRefreshToken) != nil

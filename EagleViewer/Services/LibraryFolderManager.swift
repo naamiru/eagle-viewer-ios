@@ -23,6 +23,15 @@ class LibraryFolderManager: ObservableObject {
     @Published private(set) var activeLibraryURL: URL?
     @Published private(set) var currentLibraryURL: URL?
 
+    /// The source of the current library, used for on-demand image loading decisions.
+    private(set) var currentLibrarySource: LibrarySource?
+
+    /// OneDrive root item ID for the current library (nil if not OneDrive).
+    var oneDriveRootItemId: String? {
+        if case .onedrive(let itemId) = currentLibrarySource { return itemId }
+        return nil
+    }
+
     private var currentBookmarkData: Data?
     
     // task for starting security scope resources
@@ -52,6 +61,9 @@ class LibraryFolderManager: ObservableObject {
             // Stop access to previous library if any
             discardAccess()
 
+            // Set source AFTER discardAccess (which clears it)
+            currentLibrarySource = library.source
+
             // For local storage, set virtual URL without security-scoped access
             do {
                 let localURL = try LocalImageStorageManager.shared.getLocalStorageURL(for: library.id)
@@ -76,6 +88,9 @@ class LibraryFolderManager: ObservableObject {
 
             // Stop access to previous library if any
             discardAccess()
+
+            // Set source AFTER discardAccess (which clears it)
+            currentLibrarySource = library.source
 
             // security-scoped access to Eagle library
             currentBookmarkData = bookmarkData
@@ -104,6 +119,7 @@ class LibraryFolderManager: ObservableObject {
         
         accessState = .closed
         currentBookmarkData = nil
+        currentLibrarySource = nil
         currentLibraryURL = nil
         activeLibraryURL = nil
     }

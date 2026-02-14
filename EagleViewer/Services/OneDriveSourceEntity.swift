@@ -6,34 +6,103 @@
 //
 
 import Foundation
+import OSLog
+
+// MARK: - Concurrency Limiter
+
+/// Controls concurrent OneDrive API requests to avoid 429 rate limiting.
+actor OneDriveRequestLimiter {
+    static let shared = OneDriveRequestLimiter()
+
+    private let maxConcurrent = 2
+    private var activeCount = 0
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+    /// Minimum interval between releasing one request and starting another.
+    private let minIntervalNs: UInt64 = 200_000_000  // 200ms
+    private var lastReleaseTime: ContinuousClock.Instant = .now
+
+    func acquire() async {
+        if activeCount < maxConcurrent {
+            activeCount += 1
+            return
+        }
+        await withCheckedContinuation { continuation in
+            waiters.append(continuation)
+        }
+    }
+
+    func release() {
+        lastReleaseTime = .now
+        if let next = waiters.first {
+            waiters.removeFirst()
+            // Delay resuming to space out requests
+            Task {
+                try? await Task.sleep(nanoseconds: minIntervalNs)
+                next.resume()
+            }
+        } else {
+            activeCount -= 1
+        }
+    }
+}
+
+// MARK: - Child Item ID Cache
+
+/// Caches resolved OneDrive item IDs to avoid redundant API calls.
+/// Key use: the "images" folder under each library root is resolved once per import.
+actor OneDriveItemIDCache {
+    static let shared = OneDriveItemIDCache()
+
+    // Cache key: "parentId/childName" → childItemId
+    private var cache: [String: String] = [:]
+
+    func get(parentId: String, childName: String) -> String? {
+        cache["\(parentId)/\(childName)"]
+    }
+
+    func set(parentId: String, childName: String, childId: String) {
+        cache["\(parentId)/\(childName)"] = childId
+    }
+}
+
+// MARK: - Source Entity
 
 struct OneDriveSourceEntity: SourceEntity {
-    let accessToken: String
     let itemId: String
 
     private static let graphBaseURL = "https://graph.microsoft.com/v1.0"
+    private static let maxRetries = 5
+    private static let initialBackoffSeconds: Double = 2.0
 
     func appending(_ path: String, isFolder: Bool) async throws -> SourceEntity {
         var currentId = itemId
         for name in path.split(separator: "/") {
-            currentId = try await getChildItemId(parentId: currentId, childName: String(name))
+            let childName = String(name)
+
+            // Check cache first
+            if let cachedId = await OneDriveItemIDCache.shared.get(parentId: currentId, childName: childName) {
+                currentId = cachedId
+                continue
+            }
+
+            let resolvedId = try await getChildItemId(parentId: currentId, childName: childName)
+
+            // Cache the resolved ID
+            await OneDriveItemIDCache.shared.set(parentId: currentId, childName: childName, childId: resolvedId)
+            currentId = resolvedId
         }
-        return OneDriveSourceEntity(accessToken: accessToken, itemId: currentId)
+        return OneDriveSourceEntity(itemId: currentId)
     }
 
     func getData() async throws -> Data {
-        // GET /me/drive/items/{itemId}/content returns 302 redirect to download URL
         let url = URL(string: "\(Self.graphBaseURL)/me/drive/items/\(itemId)/content")!
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
-            throw SourceEntityError.fileNotFound
+        return try await performRequestWithRetry(url: url, label: "getData(\(itemId))") { token in
+            var request = URLRequest(url: url)
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            try Self.validateResponse(response, label: "getData(\(self.itemId))")
+            return data
         }
-
-        return data
     }
 
     func contentsOfFolder() async throws -> [(String, SourceEntity)] {
@@ -41,21 +110,18 @@ struct OneDriveSourceEntity: SourceEntity {
         var nextURL: URL? = URL(string: "\(Self.graphBaseURL)/me/drive/items/\(itemId)/children?$select=id,name&$top=200")
 
         while let url = nextURL {
-            var request = URLRequest(url: url)
-            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
-                throw SourceEntityError.fileNotFound
+            let result: DriveChildrenResponse = try await performRequestWithRetry(url: url, label: "contentsOfFolder(\(itemId))") { token in
+                var request = URLRequest(url: url)
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                let (data, response) = try await URLSession.shared.data(for: request)
+                try Self.validateResponse(response, label: "contentsOfFolder(\(self.itemId))")
+                return try JSONDecoder().decode(DriveChildrenResponse.self, from: data)
             }
-
-            let result = try JSONDecoder().decode(DriveChildrenResponse.self, from: data)
 
             let items = result.value.map { child in
                 (
                     child.name,
-                    OneDriveSourceEntity(accessToken: accessToken, itemId: child.id) as SourceEntity
+                    OneDriveSourceEntity(itemId: child.id) as SourceEntity
                 )
             }
             allItems.append(contentsOf: items)
@@ -71,45 +137,136 @@ struct OneDriveSourceEntity: SourceEntity {
     }
 
     func copy(to destination: URL) async throws {
-        // Download file content directly to destination URL
         let url = URL(string: "\(Self.graphBaseURL)/me/drive/items/\(itemId)/content")!
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        try await performRequestWithRetry(url: url, label: "copy(\(itemId))") { (token: String) -> Void in
+            var request = URLRequest(url: url)
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            let (tempURL, response) = try await URLSession.shared.download(for: request)
 
-        let (tempURL, response) = try await URLSession.shared.download(for: request)
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
+                try? FileManager.default.removeItem(at: tempURL)
+                let code = httpResponse.statusCode
+                Logger.app.warning("OneDrive copy(\(self.itemId)) failed: HTTP \(code)")
+                throw OneDriveAPIError.httpError(statusCode: code)
+            }
 
-        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
-            try? FileManager.default.removeItem(at: tempURL)
-            throw SourceEntityError.fileNotFound
+            // Ensure destination directory exists
+            let destDir = destination.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: destDir, withIntermediateDirectories: true)
+
+            if FileManager.default.fileExists(atPath: destination.path) {
+                try FileManager.default.removeItem(at: destination)
+            }
+            try FileManager.default.moveItem(at: tempURL, to: destination)
         }
-
-        // Move downloaded file to destination
-        if FileManager.default.fileExists(atPath: destination.path) {
-            try FileManager.default.removeItem(at: destination)
-        }
-        try FileManager.default.moveItem(at: tempURL, to: destination)
     }
 
     // MARK: - Helpers
 
     private func getChildItemId(parentId: String, childName: String) async throws -> String {
-        // URL-encode the child name for the path
         guard let encodedName = childName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else {
             throw SourceEntityError.fileNotFound
         }
 
         let url = URL(string: "\(Self.graphBaseURL)/me/drive/items/\(parentId):/\(encodedName)")!
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        return try await performRequestWithRetry(url: url, label: "getChildItemId(\(childName))") { token in
+            var request = URLRequest(url: url)
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            try Self.validateResponse(response, label: "getChildItemId(\(childName))")
+            let item = try JSONDecoder().decode(DriveItem.self, from: data)
+            return item.id
+        }
+    }
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+    // MARK: - Retry & Auth
 
-        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
-            throw SourceEntityError.fileNotFound
+    /// Executes a request with automatic token refresh, retry, and concurrency limiting.
+    private func performRequestWithRetry<T>(
+        url: URL,
+        label: String,
+        operation: @escaping (String) async throws -> T
+    ) async throws -> T {
+        var lastError: Error?
+
+        for attempt in 0..<Self.maxRetries {
+            // Wait for concurrency slot
+            await OneDriveRequestLimiter.shared.acquire()
+
+            do {
+                let token = try await OneDriveAuthManager.getValidAccessToken()
+                let result = try await operation(token)
+                await OneDriveRequestLimiter.shared.release()
+                return result
+            } catch let error as OneDriveAPIError where error.isRetryable {
+                await OneDriveRequestLimiter.shared.release()
+                lastError = error
+                let delay = Self.initialBackoffSeconds * pow(2.0, Double(attempt))
+                Logger.app.warning("OneDrive \(label) attempt \(attempt + 1) failed (retryable): \(error.localizedDescription), retrying in \(delay)s")
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            } catch let error as URLError where Self.isRetryableURLError(error) {
+                await OneDriveRequestLimiter.shared.release()
+                lastError = error
+                let delay = Self.initialBackoffSeconds * pow(2.0, Double(attempt))
+                Logger.app.warning("OneDrive \(label) attempt \(attempt + 1) network error: \(error.localizedDescription), retrying in \(delay)s")
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            } catch {
+                await OneDriveRequestLimiter.shared.release()
+                // Non-retryable error — fail immediately
+                throw error
+            }
         }
 
-        let item = try JSONDecoder().decode(DriveItem.self, from: data)
-        return item.id
+        Logger.app.error("OneDrive \(label) failed after \(Self.maxRetries) attempts")
+        throw lastError ?? SourceEntityError.fileNotFound
+    }
+
+    private static func validateResponse(_ response: URLResponse, label: String) throws {
+        guard let httpResponse = response as? HTTPURLResponse else { return }
+        let code = httpResponse.statusCode
+        guard code == 200 else {
+            Logger.app.warning("OneDrive \(label) HTTP \(code)")
+            throw OneDriveAPIError.httpError(statusCode: code)
+        }
+    }
+
+    private static func isRetryableURLError(_ error: URLError) -> Bool {
+        switch error.code {
+        case .timedOut, .networkConnectionLost, .notConnectedToInternet,
+             .cannotConnectToHost, .secureConnectionFailed:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+// MARK: - Error Types
+
+enum OneDriveAPIError: LocalizedError {
+    case httpError(statusCode: Int)
+
+    var isRetryable: Bool {
+        switch self {
+        case .httpError(let code):
+            // 401 = token expired (will refresh on retry)
+            // 429 = rate limited
+            // 500+ = server errors
+            return code == 401 || code == 429 || code >= 500
+        }
+    }
+
+    var errorDescription: String? {
+        switch self {
+        case .httpError(let code):
+            switch code {
+            case 401: return "Authentication expired"
+            case 403: return "Access denied"
+            case 404: return "File not found"
+            case 429: return "Rate limited by OneDrive"
+            default: return "OneDrive API error (HTTP \(code))"
+            }
+        }
     }
 }
 

@@ -14,7 +14,7 @@ struct MetadataImporter {
     enum Source {
         case url(url: URL)
         case gdrive(service: GTLRDriveService, fileId: String)
-        case onedrive(accessToken: String, itemId: String)
+        case onedrive(itemId: String)
     }
 
     struct MetadataJSON: Decodable {
@@ -75,6 +75,12 @@ struct MetadataImporter {
     let source: Source
     let localUrl: URL? // Optional URL to local storage for copying images (if useLocalStorage)
     let progressHandler: (Double) async -> Void // Callback to report import progress (0.0 to 1.0)
+
+    /// Whether this source downloads images on-demand (lazy) instead of during import.
+    private var isLazyImageSource: Bool {
+        if case .onedrive = source { return true }
+        return false
+    }
     
     var sourceRoot: SourceEntity {
         return createRootSourceEntity(source)
@@ -141,18 +147,25 @@ struct MetadataImporter {
             
             // Process items in batches, each in its own transaction
             for batch in itemsToUpdate.chunks(ofSize: 100) {
-                // Load metadata for all items in batch first
-                let batchMetadata: [(itemId: String, metadata: ItemMetadataJSON)] = try await withThrowingTaskGroup(of: (String, ItemMetadataJSON).self) { group in
+                // Load metadata for all items in batch first (skip items that fail to load)
+                let batchMetadata: [(itemId: String, metadata: ItemMetadataJSON)] = await withTaskGroup(of: (String, ItemMetadataJSON?).self) { group in
                     for itemId in batch {
                         group.addTask {
-                            let metadata = try await loadItemMetadata(itemId: itemId)
-                            return (itemId, metadata)
+                            do {
+                                let metadata = try await loadItemMetadata(itemId: itemId)
+                                return (itemId, metadata)
+                            } catch {
+                                Logger.app.warning("Skipping item \(itemId): failed to load metadata: \(error)")
+                                return (itemId, nil)
+                            }
                         }
                     }
-                    
+
                     var results: [(itemId: String, metadata: ItemMetadataJSON)] = []
-                    for try await (itemId, metadata) in group {
-                        results.append((itemId: itemId, metadata: metadata))
+                    for await (itemId, metadata) in group {
+                        if let metadata {
+                            results.append((itemId: itemId, metadata: metadata))
+                        }
                     }
                     return results
                 }
@@ -163,18 +176,19 @@ struct MetadataImporter {
                     return (item: item, metadata: metadata)
                 }
                 
-                // Copy images to local storage if localUrl provided
-                if localUrl != nil {
-                    try await withThrowingTaskGroup(of: Void.self) { group in
+                // Copy images to local storage if localUrl provided (skip for lazy-loading sources)
+                if localUrl != nil && !isLazyImageSource {
+                    await withTaskGroup(of: Void.self) { group in
                         for (item, _) in batchItems {
                             group.addTask {
-                                try await copyItemImages(item: item)
+                                do {
+                                    try await copyItemImages(item: item)
+                                } catch {
+                                    Logger.app.warning("Skipping image copy for \(item.itemId): \(error)")
+                                }
                             }
                         }
-                        
-                        for try await _ in group {
-                            // Wait for all copies to complete
-                        }
+                        for await _ in group {}
                     }
                 }
                 
@@ -263,7 +277,7 @@ struct MetadataImporter {
         existingDbItemIds: Set<String>
     ) async throws -> [String: Int64] {
         let data = try await sourceRoot.appending("mtime.json", isFolder: false).getData()
-        let mtimeData = try JSONDecoder().decode(MTimeJSON.self, from: data)
+        let mtimeData = try Self.decodeJSONResilient(MTimeJSON.self, from: data, label: "mtime.json")
         
         // Only scan directory if counts don't match (indicating missing items)
         if mtimeData.totalCount != mtimeData.itemTimes.count {
@@ -288,8 +302,11 @@ struct MetadataImporter {
     ) async throws -> [String: Int64] {
         var allItemTimes = existingItemTimes
         
-        guard let imagesDir = try? await sourceRoot.appending("images", isFolder: true) else {
-            Logger.app.debug("Images directory does not exist")
+        let imagesDir: SourceEntity
+        do {
+            imagesDir = try await sourceRoot.appending("images", isFolder: true)
+        } catch {
+            Logger.app.warning("Failed to access images directory: \(error)")
             return allItemTimes
         }
         
@@ -436,12 +453,63 @@ struct MetadataImporter {
         }
     }
     
+    /// Decode JSON with resilience: if standard decode fails due to trailing bytes,
+    /// try truncating the data to find the valid JSON boundary.
+    static func decodeJSONResilient<T: Decodable>(_ type: T.Type, from data: Data, label: String) throws -> T {
+        do {
+            return try JSONDecoder().decode(type, from: data)
+        } catch {
+            // On any decode failure, attempt truncated parse (handles trailing garbage bytes).
+            // This is safe: if the data has no valid JSON prefix, truncation also fails and we re-throw.
+            Logger.app.warning("\(label): decode failed, attempting truncated parse. Error: \(error)")
+            if let dataString = String(data: data, encoding: .utf8) {
+                var braceCount = 0
+                var bracketCount = 0
+                var inString = false
+                var escaped = false
+                var endIndex = dataString.startIndex
+
+                for i in dataString.indices {
+                    let ch = dataString[i]
+                    if escaped {
+                        escaped = false
+                        continue
+                    }
+                    if ch == "\\" && inString {
+                        escaped = true
+                        continue
+                    }
+                    if ch == "\"" {
+                        inString.toggle()
+                        continue
+                    }
+                    if inString { continue }
+                    if ch == "{" { braceCount += 1 }
+                    if ch == "}" { braceCount -= 1 }
+                    if ch == "[" { bracketCount += 1 }
+                    if ch == "]" { bracketCount -= 1 }
+                    if braceCount == 0 && bracketCount == 0 && (ch == "}" || ch == "]") {
+                        endIndex = dataString.index(after: i)
+                        break
+                    }
+                }
+
+                if endIndex > dataString.startIndex,
+                   let truncatedData = String(dataString[dataString.startIndex..<endIndex]).data(using: .utf8) {
+                    Logger.app.info("\(label): truncated from \(data.count) to \(truncatedData.count) bytes")
+                    return try JSONDecoder().decode(type, from: truncatedData)
+                }
+            }
+            throw error
+        }
+    }
+
     /// Import folders from Eagle library metadata
     func importFolders() async throws {
         Logger.app.debug("Starting metadata import for library \(libraryId)")
-        
+
         let data = try await sourceRoot.appending("metadata.json", isFolder: false).getData()
-        let metadata = try JSONDecoder().decode(MetadataJSON.self, from: data)
+        let metadata = try Self.decodeJSONResilient(MetadataJSON.self, from: data, label: "metadata.json")
         
         try await dbWriter.write { db in
             // Get the library's last imported modification time
@@ -634,8 +702,8 @@ func createRootSourceEntity(_ source: MetadataImporter.Source) -> any SourceEnti
         return URLSourceEntity(url: url)
     case .gdrive(let service, let fileId):
         return GoogleDriveSourceEntity(service: service, fileId: fileId)
-    case .onedrive(let accessToken, let itemId):
-        return OneDriveSourceEntity(accessToken: accessToken, itemId: itemId)
+    case .onedrive(let itemId):
+        return OneDriveSourceEntity(itemId: itemId)
     }
 }
 
