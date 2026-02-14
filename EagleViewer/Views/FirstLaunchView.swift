@@ -24,7 +24,7 @@ struct FirstLaunchView: View {
                 switch source {
                 case .file(let bookmarkData):
                     path.append(.option(name, bookmarkData))
-                case .gdrive:
+                case .gdrive, .onedrive:
                     Task {
                         try? await createCloudLibrary(name: name, source: source)
                     }

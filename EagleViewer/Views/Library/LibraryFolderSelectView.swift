@@ -27,7 +27,7 @@ enum LibrarySelectionError: LocalizedError {
         case .metadataNotFound:
             return String(localized: "metadata.json not found in the selected folder")
         case .unsupportedVersion(let version):
-            return String(localized: "This app only supports Eagle version 4.x. Your library is using version \(version).")
+            return String(localized: "This app requires Eagle version 2.0 or later. Your library is using version \(version).")
         case .versionNotFound:
             return String(localized: "Unable to determine Eagle version from metadata.json")
         case .emptyLibraryName:
@@ -51,10 +51,12 @@ struct LibraryFolderSelectView: View {
     
     @State private var showingFilePicker = false
     @State private var googleDriveUser: GoogleUserWrapper?
+    @State private var oneDriveAccessToken: String?
     @State private var error: Error?
     @State private var showingErrorAlert = false
     @State private var isProcessingFile = false
     @State private var isProcessingGdrive = false
+    @State private var isProcessingOnedrive = false
     @State private var selectionTask: Task<Void, Never>?
     
     var body: some View {
@@ -131,9 +133,9 @@ struct LibraryFolderSelectView: View {
                     }
                     .controlSize(.large)
                     .buttonStyle(.glassProminent)
-                    .disabled(isProcessingFile || isProcessingGdrive)
+                    .disabled(isProcessingFile || isProcessingGdrive || isProcessingOnedrive)
                 }
-                
+
                 VStack(alignment: .leading, spacing: 20) {
                     Text("Or choose a cloud service")
                         .fontWeight(.semibold)
@@ -171,7 +173,42 @@ struct LibraryFolderSelectView: View {
                     }
                     .controlSize(.large)
                     .buttonStyle(.glass)
-                    .disabled(isProcessingFile || isProcessingGdrive)
+                    .disabled(isProcessingFile || isProcessingGdrive || isProcessingOnedrive)
+
+                    Button(action: {
+                        showOneDrive()
+                    }) {
+                        HStack {
+                            Image("OneDrive")
+                                .resizable()
+                                .aspectRatio(1, contentMode: .fit)
+                                .frame(width: 22)
+                            Spacer()
+                            if isProcessingOnedrive {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle())
+                                    .scaleEffect(0.8)
+                                    .frame(height: 22)
+                                    .padding(.trailing, 22)
+                            } else {
+                                Text("OneDrive")
+                                    .padding(.trailing, 22)
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal)
+                        .frame(maxWidth: .infinity)
+                    }
+                    .contextMenu {
+                        Button(role: .destructive, action: {
+                            OneDriveAuthManager.signOut()
+                        }) {
+                            Label("Sign out", systemImage: "rectangle.portrait.and.arrow.forward")
+                        }
+                    }
+                    .controlSize(.large)
+                    .buttonStyle(.glass)
+                    .disabled(isProcessingFile || isProcessingGdrive || isProcessingOnedrive)
                 }
             }
             .padding(.horizontal)
@@ -180,6 +217,7 @@ struct LibraryFolderSelectView: View {
             selectionTask?.cancel()
             selectionTask = nil
             isProcessingFile = false
+            isProcessingOnedrive = false
         }
         .alert("Error", isPresented: $showingErrorAlert, presenting: error) { _ in
             Button("OK") {
@@ -208,6 +246,17 @@ struct LibraryFolderSelectView: View {
                 googleDriveUser = nil
             }
         }
+        .sheet(isPresented: Binding(
+            get: { oneDriveAccessToken != nil },
+            set: { if !$0 { oneDriveAccessToken = nil } }
+        )) {
+            if let token = oneDriveAccessToken {
+                OneDriveFolderPickerView(accessToken: token) { libraryName, itemId in
+                    handleOneDriveSelection(libraryName: libraryName, itemId: itemId)
+                    oneDriveAccessToken = nil
+                }
+            }
+        }
     }
     
     private func showError(_ error: Error) {
@@ -215,8 +264,9 @@ struct LibraryFolderSelectView: View {
         showingErrorAlert = true
         isProcessingFile = false
         isProcessingGdrive = false
+        isProcessingOnedrive = false
     }
-    
+
     private func showGoogleDrive() {
         Task {
             if let user = try? await GoogleAuthManager.ensureSignedIn() {
@@ -250,6 +300,39 @@ struct LibraryFolderSelectView: View {
         }
     }
     
+    private func showOneDrive() {
+        Task {
+            if let token = try? await OneDriveAuthManager.ensureSignedIn() {
+                oneDriveAccessToken = token
+            } else {
+                oneDriveAccessToken = nil
+            }
+        }
+    }
+
+    private func handleOneDriveSelection(libraryName: String, itemId: String) {
+        isProcessingOnedrive = true
+        selectionTask?.cancel()
+        selectionTask = Task {
+            do {
+                try await LibraryValidator.validateMetadata(itemId: itemId)
+                await MainActor.run {
+                    onSelect(libraryName, .onedrive(itemId: itemId))
+                    isProcessingOnedrive = false
+                    selectionTask = nil
+                }
+            } catch {
+                guard !Task.isCancelled else { return }
+
+                await MainActor.run {
+                    showError(error)
+                    isProcessingOnedrive = false
+                    selectionTask = nil
+                }
+            }
+        }
+    }
+
     private func handleFolderSelection(_ url: URL) {
         isProcessingFile = true
         
@@ -326,13 +409,14 @@ enum LibraryValidator {
         struct MetadataVersion: Decodable {
             let applicationVersion: String?
         }
-        
+
         let decoder = JSONDecoder()
         let metadata = try decoder.decode(MetadataVersion.self, from: data)
-        
-        // Check if applicationVersion exists and starts with "4."
+
+        // Check if applicationVersion exists and is >= 2.0
         if let version = metadata.applicationVersion {
-            guard version.hasPrefix("4.") else {
+            let major = version.split(separator: ".").first.flatMap { Int($0) } ?? 0
+            guard major >= 2 else {
                 throw LibrarySelectionError.unsupportedVersion(version)
             }
         } else {
@@ -343,11 +427,18 @@ enum LibraryValidator {
     static func validateMetadata(user: GIDGoogleUser, fileId: String) async throws {
         let service = GTLRDriveService()
         service.authorizer = user.fetcherAuthorizer
-        let metadata = try await getMetadata(service: service, folderId: fileId)
+        let metadata = try await getGDriveMetadata(service: service, folderId: fileId)
         try validateMetadata(metadata)
     }
-    
-    private static func getMetadata(service: GTLRDriveService, folderId: String) async throws -> Data {
+
+    static func validateMetadata(itemId: String) async throws {
+        let rootEntity = OneDriveSourceEntity(itemId: itemId)
+        let metadataEntity = try await rootEntity.appending("metadata.json", isFolder: false)
+        let metadata = try await metadataEntity.getData()
+        try validateMetadata(metadata)
+    }
+
+    private static func getGDriveMetadata(service: GTLRDriveService, folderId: String) async throws -> Data {
         let fileId = try await GoogleDriveUtils.getChildFileId(service: service, folderId: folderId, fileName: "metadata.json")
         return try await GoogleDriveUtils.getFileData(service: service, fileId: fileId)
     }

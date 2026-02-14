@@ -11,12 +11,12 @@ import SwiftUI
 struct ThumbnailView: View {
     let url: URL
     @Binding private var isPlaceholder: Bool
-    
+
     init(url: URL, isPlaceholder: Binding<Bool> = .constant(false)) {
         self.url = url
         _isPlaceholder = isPlaceholder
     }
-    
+
     @ViewBuilder
     private func imageView(state: LazyImageState) -> some View {
         if let image = state.image {
@@ -31,11 +31,11 @@ struct ThumbnailView: View {
             ThumbnailLoading()
         }
     }
-    
+
     private func isSuccessState(_ state: LazyImageState) -> Bool {
         state.image != nil
     }
-    
+
     var body: some View {
         LazyImage(url: url) { state in
             imageView(state: state)
@@ -68,30 +68,64 @@ struct ThumbnailLoading: View {
 struct ItemThumbnailView: View {
     let item: Item
     @Binding private var isPlaceholder: Bool
-    
+
     @EnvironmentObject private var libraryFolderManager: LibraryFolderManager
-    
+    @State private var resolvedURL: URL?
+    @State private var downloadAttempted = false
+
     init(item: Item, isPlaceholder: Binding<Bool> = .constant(false)) {
         self.item = item
         _isPlaceholder = isPlaceholder
     }
-    
-    private var imageURL: URL? {
+
+    private var localImageURL: URL? {
         guard let currentLibraryUrl = libraryFolderManager.currentLibraryURL else {
             return nil
         }
-        
         return currentLibraryUrl.appending(path: item.thumbnailPath, directoryHint: .notDirectory)
     }
-    
+
+    private var isOneDrive: Bool {
+        libraryFolderManager.oneDriveRootItemId != nil
+    }
+
     var body: some View {
-        if let imageURL {
+        if let url = resolvedURL {
+            ThumbnailView(url: url, isPlaceholder: $isPlaceholder)
+        } else if isOneDrive {
+            // OneDrive lazy loading: show placeholder while downloading
+            ThumbnailLoading()
+                .onAppear {
+                    isPlaceholder = true
+                }
+                .task {
+                    guard !downloadAttempted else { return }
+                    downloadAttempted = true
+                    await downloadOnDemand()
+                }
+        } else if let imageURL = localImageURL {
             ThumbnailView(url: imageURL, isPlaceholder: $isPlaceholder)
         } else {
             ThumbnailError()
                 .onAppear {
                     isPlaceholder = true
                 }
+        }
+    }
+
+    private func downloadOnDemand() async {
+        guard let rootItemId = libraryFolderManager.oneDriveRootItemId,
+              let baseURL = libraryFolderManager.currentLibraryURL
+        else { return }
+
+        let url = await OneDriveImageDownloader.shared.ensureImageExists(
+            rootItemId: rootItemId,
+            relativePath: item.thumbnailPath,
+            localBaseURL: baseURL
+        )
+
+        await MainActor.run {
+            resolvedURL = url
         }
     }
 }

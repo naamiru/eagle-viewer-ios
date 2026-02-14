@@ -11,13 +11,15 @@ import GRDB
 enum LibrarySource: Codable, Equatable {
     case file(bookmarkData: Data)
     case gdrive(fileId: String)
+    case onedrive(itemId: String)
 
-    enum Kind: String, Codable { case file, gdrive }
+    enum Kind: String, Codable { case file, gdrive, onedrive }
 
     private struct Box: Codable {
         let kind: Kind
         let bookmarkData: Data?
         let fileId: String?
+        let oneDriveItemId: String?
     }
 
     init(from decoder: Decoder) throws {
@@ -27,6 +29,8 @@ enum LibrarySource: Codable, Equatable {
             self = .file(bookmarkData: b.bookmarkData ?? Data())
         case .gdrive:
             self = .gdrive(fileId: b.fileId ?? "")
+        case .onedrive:
+            self = .onedrive(itemId: b.oneDriveItemId ?? "")
         }
     }
 
@@ -34,9 +38,11 @@ enum LibrarySource: Codable, Equatable {
         let box: Box
         switch self {
         case .file(let bookmarkData):
-            box = Box(kind: .file, bookmarkData: bookmarkData, fileId: nil)
+            box = Box(kind: .file, bookmarkData: bookmarkData, fileId: nil, oneDriveItemId: nil)
         case .gdrive(let fileId):
-            box = Box(kind: .gdrive, bookmarkData: nil, fileId: fileId)
+            box = Box(kind: .gdrive, bookmarkData: nil, fileId: fileId, oneDriveItemId: nil)
+        case .onedrive(let itemId):
+            box = Box(kind: .onedrive, bookmarkData: nil, fileId: nil, oneDriveItemId: itemId)
         }
         try box.encode(to: encoder)
     }

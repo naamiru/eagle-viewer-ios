@@ -25,6 +25,8 @@ struct SettingsView: View {
     @State private var librarySourceKind: LibrarySource.Kind = .file
     @State private var isSignedInGoogleDrive = false
     @State private var isSigningInGoogleDrive = false
+    @State private var isSignedInOneDrive = false
+    @State private var isSigningInOneDrive = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -102,6 +104,25 @@ struct SettingsView: View {
                                 .disabled(isSigningInGoogleDrive)
                             }
                         }
+                        if librarySourceKind == .onedrive {
+                            LabeledContent("OneDrive") {
+                                if isSignedInOneDrive {
+                                    Text("Signed in")
+                                } else {
+                                    Text("Signed out")
+                                }
+                            }
+                            if isSignedInOneDrive {
+                                Button("Sign out", role: .destructive) {
+                                    signOutOneDrive()
+                                }
+                            } else {
+                                Button("Sign in...") {
+                                    signInOneDrive()
+                                }
+                                .disabled(isSigningInOneDrive)
+                            }
+                        }
                     } header: {
                         Text("Linked Accounts")
                     } footer: {
@@ -144,6 +165,9 @@ struct SettingsView: View {
                             isSignedInGoogleDrive = isSignedIn
                         }
                     }
+                case .onedrive:
+                    librarySourceKind = .onedrive
+                    isSignedInOneDrive = OneDriveAuthManager.isSignedIn()
                 }
             }
         }
@@ -186,6 +210,25 @@ struct SettingsView: View {
             }
             await MainActor.run {
                 isSigningInGoogleDrive = false
+            }
+        }
+    }
+
+    private func signOutOneDrive() {
+        OneDriveAuthManager.signOut()
+        isSignedInOneDrive = false
+    }
+
+    private func signInOneDrive() {
+        isSigningInOneDrive = true
+        Task {
+            if let _ = try? await OneDriveAuthManager.ensureSignedIn() {
+                await MainActor.run {
+                    isSignedInOneDrive = true
+                }
+            }
+            await MainActor.run {
+                isSigningInOneDrive = false
             }
         }
     }

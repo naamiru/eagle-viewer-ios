@@ -55,6 +55,9 @@ struct LibraryAddView: View {
                         if case .gdrive = source {
                             self.useLocalStorage = true
                         }
+                        if case .onedrive = source {
+                            self.useLocalStorage = true
+                        }
 
                         // Pop back to root
                         path = NavigationPath()
@@ -100,9 +103,10 @@ struct LibraryAddView: View {
     }
 
     private var isCloudSource: Bool {
-        if case .gdrive = librarySource {
+        switch librarySource {
+        case .gdrive, .onedrive:
             true
-        } else {
+        default:
             false
         }
     }
